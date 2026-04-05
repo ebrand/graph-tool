@@ -35,11 +35,40 @@ function Scene() {
   const pointerDownPos = useRef<{ x: number; y: number } | null>(null);
   const lastSelectionUpdate = useRef(0);
 
-  // Lock camera to prevent any rotation drift from MapControls
+  const setCameraState = useGraphStore((s) => s.setCameraState);
+
+  // Keep camera up vector stable and restore saved camera position
   const { camera } = useThree();
-  useFrame(() => {
+  const cameraInitialized = useRef(false);
+  useEffect(() => {
     camera.up.set(0, 1, 0);
-    camera.quaternion.set(0, 0, 0, 1);
+    if (!cameraInitialized.current) {
+      const saved = useGraphStore.getState().cameraState;
+      if (saved) {
+        camera.position.set(saved.x, saved.y, 10);
+        (camera as THREE.OrthographicCamera).zoom = saved.zoom;
+        camera.updateProjectionMatrix();
+      }
+      cameraInitialized.current = true;
+    }
+  }, [camera]);
+
+  // Save camera state when it changes (throttled)
+  const lastCameraSave = useRef(0);
+  const lastCameraPos = useRef({ x: 0, y: 0, zoom: 80 });
+  useFrame(() => {
+    const cam = camera as THREE.OrthographicCamera;
+    const now = Date.now();
+    if (
+      now - lastCameraSave.current > 500 &&
+      (cam.position.x !== lastCameraPos.current.x ||
+        cam.position.y !== lastCameraPos.current.y ||
+        cam.zoom !== lastCameraPos.current.zoom)
+    ) {
+      lastCameraPos.current = { x: cam.position.x, y: cam.position.y, zoom: cam.zoom };
+      lastCameraSave.current = now;
+      setCameraState({ x: cam.position.x, y: cam.position.y, zoom: cam.zoom });
+    }
   });
 
   const getNodesInRect = useCallback(
@@ -304,6 +333,18 @@ function KeyboardBridge() {
         const name = quickSave(useGraphStore.getState().exportGraph);
         if (!name) {
           alert('No previous save found. Use File > Save first.');
+        }
+        return;
+      }
+
+      // Cmd/Ctrl+Z: undo, Cmd/Ctrl+Shift+Z: redo
+      if ((ke.key === 'z' || ke.code === 'KeyZ') && (ke.metaKey || ke.ctrlKey)) {
+        ke.preventDefault();
+        ke.stopPropagation();
+        if (ke.shiftKey) {
+          useGraphStore.getState().redo();
+        } else {
+          useGraphStore.getState().undo();
         }
         return;
       }

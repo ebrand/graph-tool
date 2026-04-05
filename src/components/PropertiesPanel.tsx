@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState } from 'react';
 import { useGraphStore } from '@/store/graphStore';
+import { MetadataEntry, MetadataType } from '@/types';
 
 export default function PropertiesPanel() {
   const nodes = useGraphStore((s) => s.nodes);
@@ -108,6 +109,10 @@ export default function PropertiesPanel() {
             ))}
           </div>
         </div>
+        <MetadataEditor
+          entries={selectedNode.metadata ?? []}
+          onChange={(metadata) => updateNode(selectedNode.id, { metadata })}
+        />
       </div>
     );
   }
@@ -124,7 +129,7 @@ function RelationshipEditor({
   nodes,
   updateRelationship,
 }: {
-  rel: { id: string; sourceId: string; targetId: string; name: string; type: string; weight: number };
+  rel: { id: string; sourceId: string; targetId: string; name: string; type: string; weight: number; metadata: MetadataEntry[] };
   nodes: { id: string; name: string }[];
   updateRelationship: (id: string, updates: Record<string, unknown>) => void;
 }) {
@@ -177,6 +182,86 @@ function RelationshipEditor({
           }
           className="w-full px-2 py-1 text-sm bg-gray-800 border border-gray-600 rounded text-gray-200 focus:border-indigo-500 focus:outline-none"
         />
+      </div>
+      <MetadataEditor
+        entries={rel.metadata ?? []}
+        onChange={(metadata) => updateRelationship(rel.id, { metadata })}
+      />
+    </div>
+  );
+}
+
+const DATA_TYPES = ['string', 'number', 'boolean', 'date'] as const;
+
+function MetadataEditor({
+  entries,
+  onChange,
+}: {
+  entries: MetadataEntry[];
+  onChange: (entries: MetadataEntry[]) => void;
+}) {
+  const inputClass =
+    'px-1.5 py-0.5 text-xs bg-gray-800 border border-gray-600 rounded text-gray-200 focus:border-indigo-500 focus:outline-none';
+
+  const updateName = (index: number, val: string) => {
+    const updated = entries.map((e, i) => (i === index ? { ...e, name: val } : e));
+    onChange(updated);
+  };
+
+  const updateType = (index: number, val: MetadataType) => {
+    const updated = entries.map((e, i) => (i === index ? { ...e, dataType: val } : e));
+    onChange(updated);
+  };
+
+  const addEntry = () => {
+    onChange([...entries, { name: '', dataType: 'string' as MetadataType }]);
+  };
+
+  const removeEntry = (index: number) => {
+    onChange(entries.filter((_, i) => i !== index));
+  };
+
+  return (
+    <div className="border-t border-gray-700 pt-3">
+      <div className="flex items-center justify-between mb-2">
+        <label className="text-xs text-gray-400">Properties</label>
+        <button
+          onClick={addEntry}
+          className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+        >
+          + Add
+        </button>
+      </div>
+      {entries.length === 0 && (
+        <p className="text-xs text-gray-600">No properties</p>
+      )}
+      <div className="space-y-1">
+        {entries.map((entry, i) => (
+          <div key={i} className="flex gap-1 items-center group">
+            <input
+              type="text"
+              value={entry.name}
+              onChange={(e) => updateName(i, e.target.value)}
+              placeholder="name"
+              className={inputClass + ' flex-1'}
+            />
+            <select
+              value={entry.dataType}
+              onChange={(e) => updateType(i, e.target.value as MetadataType)}
+              className={inputClass}
+            >
+              {DATA_TYPES.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+            <button
+              onClick={() => removeEntry(i)}
+              className="text-gray-600 hover:text-red-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+            >
+              &times;
+            </button>
+          </div>
+        ))}
       </div>
     </div>
   );

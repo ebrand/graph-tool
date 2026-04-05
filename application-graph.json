@@ -1,0 +1,402 @@
+{
+  "nodes": [
+    {
+      "id": "web-app",
+      "name": "Web App",
+      "type": "application",
+      "description": "React single-page application serving the customer-facing UI",
+      "color": "#2563eb",
+      "position": { "x": 0, "y": 2.5 },
+      "metadata": [
+        { "name": "framework", "dataType": "string" },
+        { "name": "port", "dataType": "number" },
+        { "name": "authenticated", "dataType": "boolean" }
+      ]
+    },
+    {
+      "id": "mobile-app",
+      "name": "Mobile App",
+      "type": "application",
+      "description": "React Native mobile application for iOS and Android",
+      "color": "#2563eb",
+      "position": { "x": -3, "y": 2.5 },
+      "metadata": [
+        { "name": "framework", "dataType": "string" },
+        { "name": "minOsVersion", "dataType": "string" },
+        { "name": "authenticated", "dataType": "boolean" }
+      ]
+    },
+    {
+      "id": "admin-portal",
+      "name": "Admin Portal",
+      "type": "application",
+      "description": "Internal admin dashboard for managing users, content, and system config",
+      "color": "#7c3aed",
+      "position": { "x": 3, "y": 2.5 },
+      "metadata": [
+        { "name": "framework", "dataType": "string" },
+        { "name": "requiresVpn", "dataType": "boolean" }
+      ]
+    },
+    {
+      "id": "api-gateway",
+      "name": "API Gateway",
+      "type": "gateway",
+      "description": "Central API gateway handling routing, rate limiting, and authentication",
+      "color": "#d97706",
+      "position": { "x": 0, "y": 0.75 },
+      "metadata": [
+        { "name": "provider", "dataType": "string" },
+        { "name": "rateLimitRpm", "dataType": "number" },
+        { "name": "tlsEnabled", "dataType": "boolean" }
+      ]
+    },
+    {
+      "id": "user-api",
+      "name": "User API",
+      "type": "api",
+      "description": "Microservice managing user accounts, profiles, and authentication",
+      "color": "#059669",
+      "position": { "x": -2.5, "y": -1 },
+      "metadata": [
+        { "name": "language", "dataType": "string" },
+        { "name": "port", "dataType": "number" },
+        { "name": "healthEndpoint", "dataType": "string" }
+      ]
+    },
+    {
+      "id": "order-api",
+      "name": "Order API",
+      "type": "api",
+      "description": "Microservice handling order creation, fulfillment, and history",
+      "color": "#059669",
+      "position": { "x": 0, "y": -1 },
+      "metadata": [
+        { "name": "language", "dataType": "string" },
+        { "name": "port", "dataType": "number" },
+        { "name": "healthEndpoint", "dataType": "string" }
+      ]
+    },
+    {
+      "id": "notification-api",
+      "name": "Notification API",
+      "type": "api",
+      "description": "Handles email, SMS, and push notification delivery",
+      "color": "#059669",
+      "position": { "x": 2.5, "y": -1 },
+      "metadata": [
+        { "name": "language", "dataType": "string" },
+        { "name": "port", "dataType": "number" },
+        { "name": "retryPolicy", "dataType": "string" }
+      ]
+    },
+    {
+      "id": "payment-api",
+      "name": "Payment API",
+      "type": "api",
+      "description": "Processes payments, refunds, and billing through third-party providers",
+      "color": "#059669",
+      "position": { "x": -1.25, "y": -1 },
+      "metadata": [
+        { "name": "language", "dataType": "string" },
+        { "name": "pciCompliant", "dataType": "boolean" },
+        { "name": "provider", "dataType": "string" }
+      ]
+    },
+    {
+      "id": "search-api",
+      "name": "Search API",
+      "type": "api",
+      "description": "Full-text search service for products, users, and content",
+      "color": "#059669",
+      "position": { "x": 1.25, "y": -1 },
+      "metadata": [
+        { "name": "engine", "dataType": "string" },
+        { "name": "indexCount", "dataType": "number" }
+      ]
+    },
+    {
+      "id": "user-db",
+      "name": "User DB",
+      "type": "database",
+      "description": "PostgreSQL database storing user accounts and profiles",
+      "color": "#dc2626",
+      "position": { "x": -3.5, "y": -3 },
+      "metadata": [
+        { "name": "engine", "dataType": "string" },
+        { "name": "version", "dataType": "string" },
+        { "name": "encrypted", "dataType": "boolean" }
+      ]
+    },
+    {
+      "id": "order-db",
+      "name": "Order DB",
+      "type": "database",
+      "description": "PostgreSQL database storing orders, line items, and fulfillment status",
+      "color": "#dc2626",
+      "position": { "x": -0.5, "y": -3 },
+      "metadata": [
+        { "name": "engine", "dataType": "string" },
+        { "name": "version", "dataType": "string" },
+        { "name": "replicaCount", "dataType": "number" }
+      ]
+    },
+    {
+      "id": "cache",
+      "name": "Redis Cache",
+      "type": "database",
+      "description": "In-memory cache for sessions, rate limiting, and frequently accessed data",
+      "color": "#db2777",
+      "position": { "x": 2.5, "y": -3 },
+      "metadata": [
+        { "name": "engine", "dataType": "string" },
+        { "name": "maxMemoryMb", "dataType": "number" },
+        { "name": "evictionPolicy", "dataType": "string" }
+      ]
+    },
+    {
+      "id": "search-index",
+      "name": "Elasticsearch",
+      "type": "database",
+      "description": "Search index for product catalog and content search",
+      "color": "#db2777",
+      "position": { "x": 1.25, "y": -3 },
+      "metadata": [
+        { "name": "version", "dataType": "string" },
+        { "name": "shardCount", "dataType": "number" }
+      ]
+    },
+    {
+      "id": "message-queue",
+      "name": "Message Queue",
+      "type": "infrastructure",
+      "description": "RabbitMQ message broker for async event processing between services",
+      "color": "#0891b2",
+      "position": { "x": -2, "y": -3 },
+      "metadata": [
+        { "name": "broker", "dataType": "string" },
+        { "name": "durableQueues", "dataType": "boolean" }
+      ]
+    },
+    {
+      "id": "cdn",
+      "name": "CDN",
+      "type": "infrastructure",
+      "description": "Content delivery network for static assets and media",
+      "color": "#0891b2",
+      "position": { "x": 3.5, "y": 1.5 },
+      "metadata": [
+        { "name": "provider", "dataType": "string" },
+        { "name": "cacheMaxAgeSec", "dataType": "number" }
+      ]
+    },
+    {
+      "id": "auth-provider",
+      "name": "Auth Provider",
+      "type": "external",
+      "description": "Third-party OAuth/OIDC identity provider",
+      "color": "#4f46e5",
+      "position": { "x": -4.5, "y": -1 },
+      "metadata": [
+        { "name": "provider", "dataType": "string" },
+        { "name": "protocol", "dataType": "string" }
+      ]
+    },
+    {
+      "id": "payment-provider",
+      "name": "Stripe",
+      "type": "external",
+      "description": "Third-party payment processing service",
+      "color": "#4f46e5",
+      "position": { "x": -1.25, "y": -3 },
+      "metadata": [
+        { "name": "apiVersion", "dataType": "string" },
+        { "name": "webhooksEnabled", "dataType": "boolean" }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel-1",
+      "sourceId": "web-app",
+      "targetId": "api-gateway",
+      "name": "calls",
+      "type": "http",
+      "weight": 1,
+      "metadata": [{ "name": "protocol", "dataType": "string" }]
+    },
+    {
+      "id": "rel-2",
+      "sourceId": "mobile-app",
+      "targetId": "api-gateway",
+      "name": "calls",
+      "type": "http",
+      "weight": 1,
+      "metadata": [{ "name": "protocol", "dataType": "string" }]
+    },
+    {
+      "id": "rel-3",
+      "sourceId": "admin-portal",
+      "targetId": "api-gateway",
+      "name": "calls",
+      "type": "http",
+      "weight": 1,
+      "metadata": [{ "name": "protocol", "dataType": "string" }]
+    },
+    {
+      "id": "rel-4",
+      "sourceId": "api-gateway",
+      "targetId": "user-api",
+      "name": "routes to",
+      "type": "http",
+      "weight": 1,
+      "metadata": [{ "name": "pathPrefix", "dataType": "string" }]
+    },
+    {
+      "id": "rel-5",
+      "sourceId": "api-gateway",
+      "targetId": "order-api",
+      "name": "routes to",
+      "type": "http",
+      "weight": 1,
+      "metadata": [{ "name": "pathPrefix", "dataType": "string" }]
+    },
+    {
+      "id": "rel-6",
+      "sourceId": "api-gateway",
+      "targetId": "notification-api",
+      "name": "routes to",
+      "type": "http",
+      "weight": 1,
+      "metadata": [{ "name": "pathPrefix", "dataType": "string" }]
+    },
+    {
+      "id": "rel-7",
+      "sourceId": "api-gateway",
+      "targetId": "payment-api",
+      "name": "routes to",
+      "type": "http",
+      "weight": 1,
+      "metadata": [{ "name": "pathPrefix", "dataType": "string" }]
+    },
+    {
+      "id": "rel-8",
+      "sourceId": "api-gateway",
+      "targetId": "search-api",
+      "name": "routes to",
+      "type": "http",
+      "weight": 1,
+      "metadata": [{ "name": "pathPrefix", "dataType": "string" }]
+    },
+    {
+      "id": "rel-9",
+      "sourceId": "user-api",
+      "targetId": "user-db",
+      "name": "reads/writes",
+      "type": "sql",
+      "weight": 1,
+      "metadata": [{ "name": "connectionPool", "dataType": "number" }]
+    },
+    {
+      "id": "rel-10",
+      "sourceId": "order-api",
+      "targetId": "order-db",
+      "name": "reads/writes",
+      "type": "sql",
+      "weight": 1,
+      "metadata": [{ "name": "connectionPool", "dataType": "number" }]
+    },
+    {
+      "id": "rel-11",
+      "sourceId": "search-api",
+      "targetId": "search-index",
+      "name": "queries",
+      "type": "http",
+      "weight": 1,
+      "metadata": []
+    },
+    {
+      "id": "rel-12",
+      "sourceId": "user-api",
+      "targetId": "cache",
+      "name": "caches in",
+      "type": "tcp",
+      "weight": 1,
+      "metadata": [{ "name": "ttlSec", "dataType": "number" }]
+    },
+    {
+      "id": "rel-13",
+      "sourceId": "order-api",
+      "targetId": "cache",
+      "name": "caches in",
+      "type": "tcp",
+      "weight": 1,
+      "metadata": [{ "name": "ttlSec", "dataType": "number" }]
+    },
+    {
+      "id": "rel-14",
+      "sourceId": "order-api",
+      "targetId": "message-queue",
+      "name": "publishes to",
+      "type": "amqp",
+      "weight": 1,
+      "metadata": [{ "name": "exchange", "dataType": "string" }]
+    },
+    {
+      "id": "rel-15",
+      "sourceId": "message-queue",
+      "targetId": "notification-api",
+      "name": "delivers to",
+      "type": "amqp",
+      "weight": 1,
+      "metadata": [{ "name": "queue", "dataType": "string" }]
+    },
+    {
+      "id": "rel-16",
+      "sourceId": "message-queue",
+      "targetId": "payment-api",
+      "name": "delivers to",
+      "type": "amqp",
+      "weight": 1,
+      "metadata": [{ "name": "queue", "dataType": "string" }]
+    },
+    {
+      "id": "rel-17",
+      "sourceId": "user-api",
+      "targetId": "auth-provider",
+      "name": "authenticates via",
+      "type": "oauth",
+      "weight": 1,
+      "metadata": [{ "name": "grantType", "dataType": "string" }]
+    },
+    {
+      "id": "rel-18",
+      "sourceId": "payment-api",
+      "targetId": "payment-provider",
+      "name": "processes via",
+      "type": "http",
+      "weight": 1,
+      "metadata": [{ "name": "webhookUrl", "dataType": "string" }]
+    },
+    {
+      "id": "rel-19",
+      "sourceId": "web-app",
+      "targetId": "cdn",
+      "name": "loads assets from",
+      "type": "http",
+      "weight": 1,
+      "metadata": []
+    },
+    {
+      "id": "rel-20",
+      "sourceId": "api-gateway",
+      "targetId": "cache",
+      "name": "rate limits via",
+      "type": "tcp",
+      "weight": 1,
+      "metadata": []
+    }
+  ],
+  "nextNodeNumber": 18,
+  "cameraState": { "x": 0, "y": -0.25, "zoom": 80 }
+}

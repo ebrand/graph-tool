@@ -12,6 +12,8 @@ export default function Toolbar() {
   const selectedRelationshipIds = useGraphStore((s) => s.selectedRelationshipIds);
   const addNode = useGraphStore((s) => s.addNode);
   const deleteSelected = useGraphStore((s) => s.deleteSelected);
+  const autoLayout = useGraphStore((s) => s.autoLayout);
+  const newGraph = useGraphStore((s) => s.newGraph);
   const isDirty = useGraphStore((s) => s.isDirty);
 
   const hasSelection = selectedNodeIds.length > 0 || selectedRelationshipIds.length > 0;
@@ -23,6 +25,17 @@ export default function Toolbar() {
         className={`w-3 h-3 rounded-full mr-2 ${isDirty ? 'bg-amber-400' : 'bg-green-500'}`}
         title={isDirty ? 'Unsaved changes' : 'Saved'}
       />
+      <button
+        onClick={() => {
+          if (isDirty) {
+            if (!confirm('You have unsaved changes. Start a new graph anyway?')) return;
+          }
+          newGraph();
+        }}
+        className="px-3 py-1.5 text-sm bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition-colors"
+      >
+        New
+      </button>
       <button
         onClick={() => { setFileOpen(!fileOpen); setSettingsOpen(false); }}
         className={`px-3 py-1.5 text-sm rounded transition-colors ${
@@ -45,6 +58,12 @@ export default function Toolbar() {
         className="px-3 py-1.5 text-sm bg-red-700 text-white rounded hover:bg-red-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
       >
         Delete
+      </button>
+      <button
+        onClick={autoLayout}
+        className="px-3 py-1.5 text-sm bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition-colors"
+      >
+        Auto Layout
       </button>
       <button
         onClick={() => { setSettingsOpen(!settingsOpen); setFileOpen(false); }}

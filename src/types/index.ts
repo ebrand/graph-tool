@@ -1,3 +1,10 @@
+export type MetadataType = 'string' | 'number' | 'boolean' | 'date';
+
+export interface MetadataEntry {
+  name: string;
+  dataType: MetadataType;
+}
+
 export interface GraphNode {
   id: string;
   name: string;
@@ -5,6 +12,7 @@ export interface GraphNode {
   description: string;
   color: string;
   position: { x: number; y: number };
+  metadata: MetadataEntry[];
 }
 
 export interface Relationship {
@@ -14,6 +22,7 @@ export interface Relationship {
   name: string;
   type: string;
   weight: number;
+  metadata: MetadataEntry[];
 }
 
 export interface DragState {
