@@ -46,7 +46,9 @@ function Scene() {
   const nodeInstances = useDataStore((s) => s.nodeInstances);
   const relationshipInstances = useDataStore((s) => s.relationshipInstances);
   const selectedInstanceId = useDataStore((s) => s.selectedInstanceId);
+  const selectedInstanceIds = useDataStore((s) => s.selectedInstanceIds);
   const selectInstance = useDataStore((s) => s.selectInstance);
+  const selectMultipleInstances = useDataStore((s) => s.selectMultipleInstances);
   const updateNodeInstance = useDataStore((s) => s.updateNodeInstance);
 
   const instanceCounts = useMemo(() => {
@@ -58,22 +60,50 @@ function Scene() {
     return counts;
   }, [isDataEntry, nodeInstances]);
 
-  // Keep camera up vector stable and restore saved camera position
+  // Keep camera up vector stable and restore saved camera position per mode
   const { camera, gl } = useThree();
   const cameraInitialized = useRef(false);
+  const prevModeRef = useRef(mode);
   const controlsRef = useRef<any>(null);
+
+  const setCameraStateForMode = useGraphStore((s) => s.setCameraStateForMode);
+
+  // Initial restore on mount
   useEffect(() => {
     camera.up.set(0, 1, 0);
     if (!cameraInitialized.current) {
-      const saved = useGraphStore.getState().cameraState;
+      const saved = useGraphStore.getState().getCameraStateForMode(mode)
+        ?? useGraphStore.getState().cameraState;
       if (saved) {
         camera.position.set(saved.x, saved.y, 10);
         (camera as THREE.OrthographicCamera).zoom = saved.zoom;
         camera.updateProjectionMatrix();
+        if (controlsRef.current) {
+          controlsRef.current.target.set(saved.x, saved.y, 0);
+        }
       }
       cameraInitialized.current = true;
     }
   }, [camera]);
+
+  // Save/restore camera on mode switch
+  useEffect(() => {
+    if (prevModeRef.current === mode) return;
+    const cam = camera as THREE.OrthographicCamera;
+    // Save current camera to the previous mode
+    setCameraStateForMode(prevModeRef.current, { x: cam.position.x, y: cam.position.y, zoom: cam.zoom });
+    // Restore camera for the new mode
+    const saved = useGraphStore.getState().getCameraStateForMode(mode);
+    if (saved) {
+      cam.position.set(saved.x, saved.y, 10);
+      cam.zoom = saved.zoom;
+      cam.updateProjectionMatrix();
+      if (controlsRef.current) {
+        controlsRef.current.target.set(saved.x, saved.y, 0);
+      }
+    }
+    prevModeRef.current = mode;
+  }, [mode, camera, setCameraStateForMode]);
 
   // Trackpad two-finger scroll → pan; pinch (ctrlKey) → zoom (handled by MapControls)
   useEffect(() => {
@@ -115,7 +145,9 @@ function Scene() {
     ) {
       lastCameraPos.current = { x: cam.position.x, y: cam.position.y, zoom: cam.zoom };
       lastCameraSave.current = now;
-      setCameraState({ x: cam.position.x, y: cam.position.y, zoom: cam.zoom });
+      const pos = { x: cam.position.x, y: cam.position.y, zoom: cam.zoom };
+      setCameraState(pos);
+      setCameraStateForMode(mode, pos);
     }
   });
 
@@ -142,6 +174,31 @@ function Scene() {
       return ids;
     },
     [nodes, nodeSettings.minWidthPx]
+  );
+
+  const getInstancesInRect = useCallback(
+    (start: { x: number; y: number }, current: { x: number; y: number }) => {
+      const minX = Math.min(start.x, current.x);
+      const maxX = Math.max(start.x, current.x);
+      const minY = Math.min(start.y, current.y);
+      const maxY = Math.max(start.y, current.y);
+      const ids: string[] = [];
+      for (const ni of nodeInstances) {
+        const w = getNodeWidth(ni.label, nodeSettings.minWidthPx);
+        const hw = w / 2;
+        const hh = NODE_HEIGHT / 2;
+        if (
+          ni.position.x - hw >= minX &&
+          ni.position.x + hw <= maxX &&
+          ni.position.y - hh >= minY &&
+          ni.position.y + hh <= maxY
+        ) {
+          ids.push(ni.id);
+        }
+      }
+      return ids;
+    },
+    [nodeInstances, nodeSettings.minWidthPx]
   );
 
   const handleBgContextMenu = useCallback(
@@ -191,8 +248,24 @@ function Scene() {
         };
         const newPos = grid.snapEnabled ? snapToGrid(raw, grid.minorGridPx) : raw;
         if (isDataGraph) {
-          // In data graph mode drag moves instance nodes
-          updateNodeInstance(nodeDragState.nodeId, { position: newPos });
+          // In data graph mode drag moves instance nodes (group if multi-selected)
+          const ds = useDataStore.getState();
+          const selIds = ds.selectedInstanceIds;
+          const anchor = ds.nodeInstances.find((ni) => ni.id === nodeDragState.nodeId);
+          if (anchor && selIds.length > 1 && selIds.includes(nodeDragState.nodeId)) {
+            const dx = newPos.x - anchor.position.x;
+            const dy = newPos.y - anchor.position.y;
+            if (dx !== 0 || dy !== 0) {
+              for (const iid of selIds) {
+                const inst = ds.nodeInstances.find((ni) => ni.id === iid);
+                if (inst) {
+                  updateNodeInstance(iid, { position: { x: inst.position.x + dx, y: inst.position.y + dy } });
+                }
+              }
+            }
+          } else {
+            updateNodeInstance(nodeDragState.nodeId, { position: newPos });
+          }
         } else {
           // Read fresh state to avoid stale closure
           const currentState = useGraphStore.getState();
@@ -222,11 +295,15 @@ function Scene() {
         const now = Date.now();
         if (now - lastSelectionUpdate.current > 100) {
           lastSelectionUpdate.current = now;
-          selectMultiple(getNodesInRect(marqueeState.start, current), []);
+          if (isDataGraph) {
+            selectMultipleInstances(getInstancesInRect(marqueeState.start, current));
+          } else {
+            selectMultiple(getNodesInRect(marqueeState.start, current), []);
+          }
         }
       }
     },
-    [dragState, nodeDragState, marqueeState, setDragState, updateNode, grid, setMarqueeState, selectMultiple, getNodesInRect, isDataGraph]
+    [dragState, nodeDragState, marqueeState, setDragState, updateNode, grid, setMarqueeState, selectMultiple, selectMultipleInstances, getNodesInRect, getInstancesInRect, isDataGraph]
   );
 
   const handlePointerUp = useCallback(
@@ -252,18 +329,24 @@ function Scene() {
         const dx = Math.abs(current.x - start.x);
         const dy = Math.abs(current.y - start.y);
 
-        if (isDataGraph) {
-          if (dx < 0.05 && dy < 0.05) selectInstance(null);
-        } else if (dx < 0.05 && dy < 0.05) {
-          clearSelection();
+        if (dx < 0.05 && dy < 0.05) {
+          // Just a click — clear selection
+          if (isDataGraph) {
+            selectInstance(null);
+          } else {
+            clearSelection();
+          }
+        } else if (isDataGraph) {
+          // Final selection pass for instances
+          selectMultipleInstances(getInstancesInRect(start, current));
         } else {
-          // Final selection pass to catch anything throttle missed
+          // Final selection pass for schema nodes
           selectMultiple(getNodesInRect(start, current), []);
         }
         setMarqueeState(null);
       }
     },
-    [dragState, nodeDragState, marqueeState, grid, setDragState, setNodeDragState, setMarqueeState, clearSelection, selectMultiple, getNodesInRect, addNodeWithRelationship, isDataGraph]
+    [dragState, nodeDragState, marqueeState, grid, setDragState, setNodeDragState, setMarqueeState, clearSelection, selectMultiple, selectMultipleInstances, getNodesInRect, getInstancesInRect, addNodeWithRelationship, isDataGraph, selectInstance]
   );
 
   // Safety net: clear drag/marquee state on any pointerup, even if it's over a node/edge.
@@ -351,8 +434,8 @@ function Scene() {
                 lineColor={theme.relationshipLine}
                 textColor={theme.relationshipText}
                 abstractColor={theme.abstractColor}
-                sourceCardinality={rel.sourceCardinality}
-                targetCardinality={rel.targetCardinality}
+                sourceCardinality={nodeSettings.showCardinality ? rel.sourceCardinality : undefined}
+                targetCardinality={nodeSettings.showCardinality ? rel.targetCardinality : undefined}
                 kind={rel.kind}
               />
             );
@@ -388,6 +471,27 @@ function Scene() {
             const tgtInst = nodeInstances.find((ni) => ni.id === ri.targetInstanceId);
             const schemaRel = relationships.find((r) => r.id === ri.schemaRelationshipId);
             if (!srcInst || !tgtInst || !schemaRel) return null;
+
+            // Bidirectional: check if a reverse instance edge exists between the same pair
+            const hasReverse = relationshipInstances.some(
+              (other) => other.id !== ri.id &&
+                other.sourceInstanceId === ri.targetInstanceId &&
+                other.targetInstanceId === ri.sourceInstanceId
+            );
+
+            const singleSelectedInstId = selectedInstanceIds.length === 1 ? selectedInstanceIds[0] : null;
+            const sourceSelected = singleSelectedInstId === ri.sourceInstanceId;
+            const targetSelected = singleSelectedInstId === ri.targetInstanceId;
+            const eitherEndSelected = sourceSelected || targetSelected;
+
+            // Deduplicate bidirectional: when neither end selected, only render one
+            if (hasReverse && !eitherEndSelected && ri.sourceInstanceId > ri.targetInstanceId) return null;
+
+            const biOffset = hasReverse && eitherEndSelected ? 0.08 : 0;
+            const showDoubleArrow = hasReverse && !eitherEndSelected;
+            // Dim the non-active direction
+            const dimmed = hasReverse && targetSelected && !sourceSelected;
+
             return (
               <GraphEdge
                 key={ri.id}
@@ -398,11 +502,11 @@ function Scene() {
                 sourceWidth={getNodeWidth(srcInst.label, nodeSettings.minWidthPx)}
                 targetWidth={getNodeWidth(tgtInst.label, nodeSettings.minWidthPx)}
                 isSelected={false}
-                sourceSelected={false}
-                targetSelected={false}
-                isBidirectional={false}
-                showDoubleArrow={false}
-                offset={0}
+                sourceSelected={sourceSelected}
+                targetSelected={targetSelected}
+                isBidirectional={hasReverse}
+                showDoubleArrow={showDoubleArrow}
+                offset={biOffset}
                 edgeGapPx={nodeSettings.edgeGapPx}
                 highlightColor={theme.selectionHighlight}
                 lineColor={theme.relationshipLine}
@@ -427,7 +531,7 @@ function Scene() {
                   borderColor={theme.nodeBorder}
                   highlightColor={theme.selectionHighlight}
                   position={ni.position}
-                  isSelected={selectedInstanceId === ni.id}
+                  isSelected={selectedInstanceIds.includes(ni.id)}
                   readOnly={true}
                 />
               );
@@ -448,6 +552,8 @@ function Scene() {
               gapSize={0.05}
             />
           )}
+
+          <SelectionRect />
         </>
       )}
     </>
@@ -485,10 +591,11 @@ function KeyboardBridge() {
       if ((ke.key === 'z' || ke.code === 'KeyZ') && (ke.metaKey || ke.ctrlKey)) {
         ke.preventDefault();
         ke.stopPropagation();
+        const isSchema = useDataStore.getState().mode === 'schema';
         if (ke.shiftKey) {
-          useGraphStore.getState().redo();
+          isSchema ? useGraphStore.getState().redo() : useDataStore.getState().redo();
         } else {
-          useGraphStore.getState().undo();
+          isSchema ? useGraphStore.getState().undo() : useDataStore.getState().undo();
         }
         return;
       }
@@ -521,6 +628,7 @@ export default function GraphCanvas() {
       orthographic
       camera={{ zoom: 80, position: [0, 0, 10], near: 0.1, far: 100 }}
       style={{ background: canvasBg }}
+      flat
       gl={{ antialias: true }}
       tabIndex={-1}
     >

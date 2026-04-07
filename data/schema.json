@@ -1,0 +1,1546 @@
+{
+  "nodes": [
+    {
+      "id": "1775360343357-26",
+      "name": "customer-account",
+      "type": "default",
+      "description": "",
+      "color": "#d1d1d1",
+      "position": {
+        "x": -2.25,
+        "y": 0.375
+      },
+      "metadata": [
+        {
+          "name": "accountName",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "firstName",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "lastName",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "dateOfBirth",
+          "dataType": "date",
+          "required": true
+        },
+        {
+          "name": "accountStatus",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "createdDate",
+          "dataType": "date",
+          "required": true
+        },
+        {
+          "name": "isVerified",
+          "dataType": "boolean",
+          "required": false
+        },
+        {
+          "name": "isActive",
+          "dataType": "boolean",
+          "required": false
+        }
+      ],
+      "abstract": false
+    },
+    {
+      "id": "1775360397479-28",
+      "name": "device",
+      "type": "default",
+      "description": "",
+      "color": "#d1d1d1",
+      "position": {
+        "x": -7.625,
+        "y": -1.9375
+      },
+      "metadata": [
+        {
+          "name": "deviceType",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "manufacturer",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "model",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "osVersion",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "lastSeenDate",
+          "dataType": "date",
+          "required": false
+        },
+        {
+          "name": "isTrusted",
+          "dataType": "boolean",
+          "required": false
+        }
+      ],
+      "abstract": false
+    },
+    {
+      "id": "1775360409396-30",
+      "name": "mac-addr",
+      "type": "default",
+      "description": "",
+      "color": "#d1d1d1",
+      "position": {
+        "x": -7.625,
+        "y": -4.25
+      },
+      "metadata": [
+        {
+          "name": "macAddress",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "abstract": false
+    },
+    {
+      "id": "1775360495683-32",
+      "name": "telephone-number",
+      "type": "default",
+      "description": "",
+      "color": "#d1d1d1",
+      "position": {
+        "x": -9.1875,
+        "y": 0.75
+      },
+      "metadata": [
+        {
+          "name": "countryCode",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "areaCode",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "phoneNumber",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "phoneType",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "isVerified",
+          "dataType": "boolean",
+          "required": false
+        },
+        {
+          "name": "isSmsCapable",
+          "dataType": "boolean",
+          "required": false
+        }
+      ],
+      "abstract": false
+    },
+    {
+      "id": "1775360512433-34",
+      "name": "contact-point",
+      "type": "default",
+      "description": "",
+      "color": "#d1d1d1",
+      "position": {
+        "x": -7.75,
+        "y": 3.6875
+      },
+      "metadata": [
+        {
+          "name": "isPrimary",
+          "dataType": "boolean",
+          "required": false
+        },
+        {
+          "name": "isOptedIn",
+          "dataType": "boolean",
+          "required": false
+        },
+        {
+          "name": "lastContactedDate",
+          "dataType": "date",
+          "required": false
+        }
+      ],
+      "abstract": true
+    },
+    {
+      "id": "1775360549534-37",
+      "name": "social-media-addr",
+      "type": "default",
+      "description": "",
+      "color": "#d1d1d1",
+      "position": {
+        "x": -10.75,
+        "y": 1.75
+      },
+      "metadata": [
+        {
+          "name": "platform",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "handle",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "profileUrl",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "isVerified",
+          "dataType": "boolean",
+          "required": false
+        }
+      ],
+      "abstract": false
+    },
+    {
+      "id": "1775360568903-39",
+      "name": "email-addr",
+      "type": "default",
+      "description": "",
+      "color": "#d1d1d1",
+      "position": {
+        "x": -11.25,
+        "y": 2.875
+      },
+      "metadata": [
+        {
+          "name": "emailAddress",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "isVerified",
+          "dataType": "boolean",
+          "required": false
+        },
+        {
+          "name": "verifiedDate",
+          "dataType": "date",
+          "required": false
+        }
+      ],
+      "abstract": false
+    },
+    {
+      "id": "1775360641271-41",
+      "name": "region",
+      "type": "default",
+      "description": "",
+      "color": "#d1d1d1",
+      "position": {
+        "x": 2,
+        "y": 2.5
+      },
+      "metadata": [
+        {
+          "name": "regionCode",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "regionName",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "isActive",
+          "dataType": "boolean",
+          "required": false
+        }
+      ],
+      "abstract": false
+    },
+    {
+      "id": "1775360666052-43",
+      "name": "segment",
+      "type": "default",
+      "description": "",
+      "color": "#d1d1d1",
+      "position": {
+        "x": 2,
+        "y": 1.375
+      },
+      "metadata": [
+        {
+          "name": "segmentName",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "isActive",
+          "dataType": "boolean",
+          "required": false
+        }
+      ],
+      "abstract": false
+    },
+    {
+      "id": "1775360695433-45",
+      "name": "language",
+      "type": "default",
+      "description": "",
+      "color": "#d1d1d1",
+      "position": {
+        "x": 0.75,
+        "y": 6.375
+      },
+      "metadata": [
+        {
+          "name": "languageCode",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "languageName",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "isDefault",
+          "dataType": "boolean",
+          "required": false
+        }
+      ],
+      "abstract": false
+    },
+    {
+      "id": "1775360700616-47",
+      "name": "currency",
+      "type": "default",
+      "description": "",
+      "color": "#d1d1d1",
+      "position": {
+        "x": 3.125,
+        "y": 6.5
+      },
+      "metadata": [
+        {
+          "name": "currencyCode",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "currencyName",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "symbol",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "decimalPlaces",
+          "dataType": "number",
+          "required": false
+        }
+      ],
+      "abstract": false
+    },
+    {
+      "id": "1775360741781-51",
+      "name": "catalog",
+      "type": "default",
+      "description": "",
+      "color": "#d1d1d1",
+      "position": {
+        "x": 7.625,
+        "y": 1.875
+      },
+      "metadata": [
+        {
+          "name": "catalogName",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "effectiveDate",
+          "dataType": "date",
+          "required": false
+        },
+        {
+          "name": "expirationDate",
+          "dataType": "date",
+          "required": false
+        },
+        {
+          "name": "isActive",
+          "dataType": "boolean",
+          "required": false
+        }
+      ],
+      "abstract": false
+    },
+    {
+      "id": "1775360783686-54",
+      "name": "catalog-product",
+      "type": "default",
+      "description": "",
+      "color": "#d1d1d1",
+      "position": {
+        "x": 7.625,
+        "y": -5.375
+      },
+      "metadata": [
+        {
+          "name": "sku",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "listPrice",
+          "dataType": "number",
+          "required": false
+        },
+        {
+          "name": "effectiveDate",
+          "dataType": "date",
+          "required": false
+        },
+        {
+          "name": "expirationDate",
+          "dataType": "date",
+          "required": false
+        },
+        {
+          "name": "isAvailable",
+          "dataType": "boolean",
+          "required": false
+        }
+      ],
+      "abstract": false
+    },
+    {
+      "id": "1775360789154-55",
+      "name": "product",
+      "type": "default",
+      "description": "",
+      "color": "#d1d1d1",
+      "position": {
+        "x": 5.25,
+        "y": -3.125
+      },
+      "metadata": [
+        {
+          "name": "productName",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "productCategory",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "productFamily",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "version",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "isActive",
+          "dataType": "boolean",
+          "required": false
+        }
+      ],
+      "abstract": false
+    },
+    {
+      "id": "1775360903637-58",
+      "name": "quote",
+      "type": "default",
+      "description": "",
+      "color": "#efff9e",
+      "position": {
+        "x": -0.125,
+        "y": -3
+      },
+      "metadata": [
+        {
+          "name": "quoteNumber",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "status",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "totalAmount",
+          "dataType": "number",
+          "required": false
+        },
+        {
+          "name": "discountPercent",
+          "dataType": "number",
+          "required": false
+        },
+        {
+          "name": "createdDate",
+          "dataType": "date",
+          "required": false
+        },
+        {
+          "name": "expirationDate",
+          "dataType": "date",
+          "required": false
+        },
+        {
+          "name": "isApproved",
+          "dataType": "boolean",
+          "required": false
+        }
+      ],
+      "abstract": false
+    },
+    {
+      "id": "1775360906583-59",
+      "name": "order",
+      "type": "default",
+      "description": "",
+      "color": "#33c194",
+      "position": {
+        "x": -2.25,
+        "y": -5.5
+      },
+      "metadata": [
+        {
+          "name": "orderNumber",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "status",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "orderDate",
+          "dataType": "date",
+          "required": false
+        },
+        {
+          "name": "totalAmount",
+          "dataType": "number",
+          "required": false
+        },
+        {
+          "name": "taxAmount",
+          "dataType": "number",
+          "required": false
+        },
+        {
+          "name": "paymentMethod",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "isFulfilled",
+          "dataType": "boolean",
+          "required": false
+        }
+      ],
+      "abstract": false
+    },
+    {
+      "id": "1775360934020-61",
+      "name": "quote-item",
+      "type": "default",
+      "description": "",
+      "color": "#efff9e",
+      "position": {
+        "x": 3,
+        "y": -3.375
+      },
+      "metadata": [
+        {
+          "name": "quantity",
+          "dataType": "number",
+          "required": false
+        },
+        {
+          "name": "unitPrice",
+          "dataType": "number",
+          "required": false
+        },
+        {
+          "name": "lineTotal",
+          "dataType": "number",
+          "required": false
+        },
+        {
+          "name": "discountAmount",
+          "dataType": "number",
+          "required": false
+        }
+      ],
+      "abstract": false
+    },
+    {
+      "id": "1775360943280-63",
+      "name": "order-item",
+      "type": "default",
+      "description": "",
+      "color": "#33c194",
+      "position": {
+        "x": 2.375,
+        "y": -5.5
+      },
+      "metadata": [
+        {
+          "name": "quantity",
+          "dataType": "number",
+          "required": false
+        },
+        {
+          "name": "unitPrice",
+          "dataType": "number",
+          "required": false
+        },
+        {
+          "name": "lineTotal",
+          "dataType": "number",
+          "required": false
+        },
+        {
+          "name": "fulfillmentStatus",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "shippedDate",
+          "dataType": "date",
+          "required": false
+        }
+      ],
+      "abstract": false
+    },
+    {
+      "id": "1775361877561-2",
+      "name": "organization",
+      "type": "default",
+      "description": "",
+      "color": "#d1d1d1",
+      "position": {
+        "x": -1.875,
+        "y": 6
+      },
+      "metadata": [
+        {
+          "name": "orgName",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "industry",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "employeeCount",
+          "dataType": "number",
+          "required": false
+        },
+        {
+          "name": "annualRevenue",
+          "dataType": "number",
+          "required": false
+        },
+        {
+          "name": "website",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "foundedDate",
+          "dataType": "date",
+          "required": false
+        }
+      ],
+      "abstract": false
+    },
+    {
+      "id": "1775361900153-4",
+      "name": "sales-rep",
+      "type": "default",
+      "description": "",
+      "color": "#d1d1d1",
+      "position": {
+        "x": -7.625,
+        "y": -0.375
+      },
+      "metadata": [
+        {
+          "name": "repName",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "territory",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "quota",
+          "dataType": "number",
+          "required": false
+        },
+        {
+          "name": "hireDate",
+          "dataType": "date",
+          "required": false
+        },
+        {
+          "name": "isActive",
+          "dataType": "boolean",
+          "required": false
+        }
+      ],
+      "abstract": false
+    },
+    {
+      "id": "1775361989831-8",
+      "name": "nps/survey",
+      "type": "default",
+      "description": "",
+      "color": "#d1d1d1",
+      "position": {
+        "x": -5,
+        "y": 3.375
+      },
+      "metadata": [
+        {
+          "name": "surveyName",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "surveyType",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "npsScore",
+          "dataType": "number",
+          "required": false
+        },
+        {
+          "name": "responseDate",
+          "dataType": "date",
+          "required": false
+        },
+        {
+          "name": "isCompleted",
+          "dataType": "boolean",
+          "required": false
+        }
+      ],
+      "abstract": false
+    },
+    {
+      "id": "1775362828699-2",
+      "name": "subscription",
+      "type": "default",
+      "description": "",
+      "color": "#d1d1d1",
+      "position": {
+        "x": 1.375,
+        "y": -1.75
+      },
+      "metadata": [
+        {
+          "name": "plan",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "status",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "startDate",
+          "dataType": "date",
+          "required": false
+        },
+        {
+          "name": "endDate",
+          "dataType": "date",
+          "required": false
+        },
+        {
+          "name": "monthlyAmount",
+          "dataType": "number",
+          "required": false
+        },
+        {
+          "name": "billingCycle",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "autoRenew",
+          "dataType": "boolean",
+          "required": false
+        }
+      ],
+      "abstract": false
+    },
+    {
+      "id": "1775362898732-7",
+      "name": "entitlement",
+      "type": "default",
+      "description": "",
+      "color": "#d1d1d1",
+      "position": {
+        "x": 4.125,
+        "y": 0.625
+      },
+      "metadata": [
+        {
+          "name": "featureName",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "tier",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "maxUsage",
+          "dataType": "number",
+          "required": false
+        },
+        {
+          "name": "startDate",
+          "dataType": "date",
+          "required": false
+        },
+        {
+          "name": "endDate",
+          "dataType": "date",
+          "required": false
+        },
+        {
+          "name": "isActive",
+          "dataType": "boolean",
+          "required": false
+        }
+      ],
+      "abstract": false
+    },
+    {
+      "id": "1775362953347-10",
+      "name": "usage-metric",
+      "type": "default",
+      "description": "",
+      "color": "#d1d1d1",
+      "position": {
+        "x": 6,
+        "y": -1.75
+      },
+      "metadata": [
+        {
+          "name": "metricName",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "metricType",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "currentValue",
+          "dataType": "number",
+          "required": false
+        },
+        {
+          "name": "maxValue",
+          "dataType": "number",
+          "required": false
+        },
+        {
+          "name": "periodStart",
+          "dataType": "date",
+          "required": false
+        },
+        {
+          "name": "periodEnd",
+          "dataType": "date",
+          "required": false
+        }
+      ],
+      "abstract": false
+    },
+    {
+      "id": "1775530991358-1",
+      "name": "country",
+      "type": "default",
+      "description": "",
+      "color": "#d1d1d1",
+      "position": {
+        "x": 2.125,
+        "y": 4.5
+      },
+      "metadata": [],
+      "abstract": false
+    }
+  ],
+  "relationships": [
+    {
+      "id": "1775360409396-31",
+      "sourceId": "1775360409396-30",
+      "targetId": "1775360397479-28",
+      "name": "belongs-to",
+      "type": "default",
+      "weight": 1,
+      "metadata": [
+        {
+          "name": "firstSeenDate",
+          "dataType": "date",
+          "required": false
+        },
+        {
+          "name": "lastSeenDate",
+          "dataType": "date",
+          "required": false
+        }
+      ],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775360512433-35",
+      "sourceId": "1775360495683-32",
+      "targetId": "1775360512433-34",
+      "name": "is",
+      "type": "default",
+      "weight": 1,
+      "metadata": [],
+      "sourceCardinality": "0..*",
+      "targetCardinality": "1",
+      "kind": "inherits-from"
+    },
+    {
+      "id": "1775360539371-36",
+      "sourceId": "1775360512433-34",
+      "targetId": "1775360343357-26",
+      "name": "belongs-to",
+      "type": "default",
+      "weight": 1,
+      "metadata": [
+        {
+          "name": "preferenceRank",
+          "dataType": "number",
+          "required": false
+        },
+        {
+          "name": "isOptedIn",
+          "dataType": "boolean",
+          "required": false
+        }
+      ],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775360549534-38",
+      "sourceId": "1775360549534-37",
+      "targetId": "1775360512433-34",
+      "name": "is",
+      "type": "default",
+      "weight": 1,
+      "metadata": [],
+      "sourceCardinality": "0..*",
+      "targetCardinality": "1",
+      "kind": "inherits-from"
+    },
+    {
+      "id": "1775360568903-40",
+      "sourceId": "1775360568903-39",
+      "targetId": "1775360512433-34",
+      "name": "is",
+      "type": "default",
+      "weight": 1,
+      "metadata": [],
+      "sourceCardinality": "0..*",
+      "targetCardinality": "1",
+      "kind": "inherits-from"
+    },
+    {
+      "id": "1775360641271-42",
+      "sourceId": "1775360343357-26",
+      "targetId": "1775360641271-41",
+      "name": "member-of",
+      "type": "default",
+      "weight": 1,
+      "metadata": [
+        {
+          "name": "assignedDate",
+          "dataType": "date",
+          "required": false
+        }
+      ],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775360666052-44",
+      "sourceId": "1775360343357-26",
+      "targetId": "1775360666052-43",
+      "name": "member-of",
+      "type": "default",
+      "weight": 1,
+      "metadata": [
+        {
+          "name": "segmentedDate",
+          "dataType": "date",
+          "required": false
+        },
+        {
+          "name": "confidenceScore",
+          "dataType": "number",
+          "required": false
+        }
+      ],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775360747429-52",
+      "sourceId": "1775360741781-51",
+      "targetId": "1775360641271-41",
+      "name": "has",
+      "type": "default",
+      "weight": 1,
+      "metadata": [],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775360760248-53",
+      "sourceId": "1775360741781-51",
+      "targetId": "1775360666052-43",
+      "name": "has",
+      "type": "default",
+      "weight": 1,
+      "metadata": [],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775360794260-56",
+      "sourceId": "1775360783686-54",
+      "targetId": "1775360789154-55",
+      "name": "refines",
+      "type": "default",
+      "weight": 1,
+      "metadata": [
+        {
+          "name": "effectiveDate",
+          "dataType": "date",
+          "required": false
+        }
+      ],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775360804234-57",
+      "sourceId": "1775360783686-54",
+      "targetId": "1775360741781-51",
+      "name": "belongs-to",
+      "type": "default",
+      "weight": 1,
+      "metadata": [
+        {
+          "name": "sortOrder",
+          "dataType": "number",
+          "required": false
+        },
+        {
+          "name": "isFeatured",
+          "dataType": "boolean",
+          "required": false
+        }
+      ],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775360911939-60",
+      "sourceId": "1775360906583-59",
+      "targetId": "1775360903637-58",
+      "name": "converted-from",
+      "type": "default",
+      "weight": 1,
+      "metadata": [
+        {
+          "name": "convertedDate",
+          "dataType": "date",
+          "required": false
+        },
+        {
+          "name": "conversionType",
+          "dataType": "string",
+          "required": false
+        }
+      ],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775360934020-62",
+      "sourceId": "1775360934020-61",
+      "targetId": "1775360903637-58",
+      "name": "belongs-to",
+      "type": "default",
+      "weight": 1,
+      "metadata": [
+        {
+          "name": "lineNumber",
+          "dataType": "number",
+          "required": false
+        }
+      ],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775360943280-64",
+      "sourceId": "1775360943280-63",
+      "targetId": "1775360906583-59",
+      "name": "belongs-to",
+      "type": "default",
+      "weight": 1,
+      "metadata": [
+        {
+          "name": "lineNumber",
+          "dataType": "number",
+          "required": false
+        }
+      ],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775360983117-65",
+      "sourceId": "1775360934020-61",
+      "targetId": "1775360783686-54",
+      "name": "for",
+      "type": "default",
+      "weight": 1,
+      "metadata": [
+        {
+          "name": "pricingOverride",
+          "dataType": "number",
+          "required": false
+        }
+      ],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775360990017-66",
+      "sourceId": "1775360943280-63",
+      "targetId": "1775360783686-54",
+      "name": "for",
+      "type": "default",
+      "weight": 1,
+      "metadata": [
+        {
+          "name": "pricingOverride",
+          "dataType": "number",
+          "required": false
+        }
+      ],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775361221690-69",
+      "sourceId": "1775360903637-58",
+      "targetId": "1775360343357-26",
+      "name": "for",
+      "type": "default",
+      "weight": 1,
+      "metadata": [],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775361877561-3",
+      "sourceId": "1775360343357-26",
+      "targetId": "1775361877561-2",
+      "name": "belongs-to",
+      "type": "default",
+      "weight": 1,
+      "metadata": [
+        {
+          "name": "accountRole",
+          "dataType": "string",
+          "required": false
+        },
+        {
+          "name": "since",
+          "dataType": "date",
+          "required": false
+        }
+      ],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775361900153-5",
+      "sourceId": "1775361900153-4",
+      "targetId": "1775361877561-2",
+      "name": "works-for",
+      "type": "default",
+      "weight": 1,
+      "metadata": [
+        {
+          "name": "startDate",
+          "dataType": "date",
+          "required": false
+        },
+        {
+          "name": "department",
+          "dataType": "string",
+          "required": false
+        }
+      ],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775361928103-6",
+      "sourceId": "1775360903637-58",
+      "targetId": "1775361900153-4",
+      "name": "created-by",
+      "type": "default",
+      "weight": 1,
+      "metadata": [
+        {
+          "name": "createdDate",
+          "dataType": "date",
+          "required": false
+        }
+      ],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775361989831-9",
+      "sourceId": "1775361989831-8",
+      "targetId": "1775361877561-2",
+      "name": "is-published-by",
+      "type": "default",
+      "weight": 1,
+      "metadata": [
+        {
+          "name": "publishedDate",
+          "dataType": "date",
+          "required": false
+        },
+        {
+          "name": "channel",
+          "dataType": "string",
+          "required": false
+        }
+      ],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775362828699-3",
+      "sourceId": "1775362828699-2",
+      "targetId": "1775360343357-26",
+      "name": "belongs-to",
+      "type": "default",
+      "weight": 1,
+      "metadata": [
+        {
+          "name": "activatedDate",
+          "dataType": "date",
+          "required": false
+        }
+      ],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775362898732-8",
+      "sourceId": "1775362898732-7",
+      "targetId": "1775362828699-2",
+      "name": "is-enabled-by",
+      "type": "default",
+      "weight": 1,
+      "metadata": [
+        {
+          "name": "grantedDate",
+          "dataType": "date",
+          "required": false
+        }
+      ],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775362953347-11",
+      "sourceId": "1775362953347-10",
+      "targetId": "1775362898732-7",
+      "name": "created-by",
+      "type": "default",
+      "weight": 1,
+      "metadata": [
+        {
+          "name": "recordedDate",
+          "dataType": "date",
+          "required": false
+        }
+      ],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775424768466-1",
+      "sourceId": "1775360512433-34",
+      "targetId": "1775361877561-2",
+      "name": "belongs-to",
+      "type": "default",
+      "weight": 1,
+      "metadata": [
+        {
+          "name": "isPrimary",
+          "dataType": "boolean",
+          "required": false
+        }
+      ],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775424817877-2",
+      "sourceId": "1775360343357-26",
+      "targetId": "1775361900153-4",
+      "name": "buys-from",
+      "type": "default",
+      "weight": 1,
+      "metadata": [
+        {
+          "name": "assignedDate",
+          "dataType": "date",
+          "required": false
+        },
+        {
+          "name": "isPrimary",
+          "dataType": "boolean",
+          "required": false
+        }
+      ],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775528521214-1",
+      "sourceId": "1775360906583-59",
+      "targetId": "1775360343357-26",
+      "name": "for",
+      "type": "default",
+      "weight": 1,
+      "metadata": [],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775531000320-2",
+      "sourceId": "1775530991358-1",
+      "targetId": "1775360695433-45",
+      "name": "has",
+      "type": "default",
+      "weight": 1,
+      "metadata": [],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775531005890-3",
+      "sourceId": "1775530991358-1",
+      "targetId": "1775360700616-47",
+      "name": "has",
+      "type": "default",
+      "weight": 1,
+      "metadata": [],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775531009035-4",
+      "sourceId": "1775360641271-41",
+      "targetId": "1775530991358-1",
+      "name": "has",
+      "type": "default",
+      "weight": 1,
+      "metadata": [],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775532800276-1",
+      "sourceId": "1775361989831-8",
+      "targetId": "1775360343357-26",
+      "name": "taken-by",
+      "type": "default",
+      "weight": 1,
+      "metadata": [],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775532810739-2",
+      "sourceId": "1775360397479-28",
+      "targetId": "1775360343357-26",
+      "name": "belongs-to",
+      "type": "default",
+      "weight": 1,
+      "metadata": [],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775533527076-3",
+      "sourceId": "1775362828699-2",
+      "targetId": "1775360943280-63",
+      "name": "created-by",
+      "type": "default",
+      "weight": 1,
+      "metadata": [],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    },
+    {
+      "id": "1775533667272-4",
+      "sourceId": "1775360906583-59",
+      "targetId": "1775361900153-4",
+      "name": "created-by",
+      "type": "default",
+      "weight": 1,
+      "metadata": [],
+      "sourceCardinality": "1",
+      "targetCardinality": "0..*",
+      "kind": "regular"
+    }
+  ],
+  "nextNodeNumber": 92,
+  "theme": {
+    "canvasBg": "#ffffff",
+    "canvasGridMajor": "#d6d6d6",
+    "canvasGridMinor": "#ededed",
+    "nodeBackground": "#d1d1d1",
+    "nodeForeground": "#000000",
+    "nodeBorder": "#545454",
+    "selectionHighlight": "#0000ff",
+    "relationshipLine": "#7a7a7a",
+    "relationshipText": "#000000",
+    "abstractColor": "#e83030",
+    "canvasGrid": "#878787"
+  },
+  "grid": {
+    "minorGridPx": 10,
+    "majorGridPx": 50,
+    "snapEnabled": true
+  },
+  "nodeSettings": {
+    "minWidthPx": 100,
+    "edgeGapPx": 20,
+    "jiggleEnabled": true,
+    "shadowsEnabled": false,
+    "palette": [
+      "#bab8e5",
+      "#7786a6",
+      "#0891b2",
+      "#33c194",
+      "#efff9e",
+      "#dc2626",
+      "#a682e8",
+      "#db2777"
+    ],
+    "relTextPosition": 30,
+    "enforceChildOwnsRelationship": false,
+    "showCardinality": false
+  },
+  "cameraState": {
+    "x": 1.256023559570312,
+    "y": 0.40780139160156836,
+    "zoom": 88.6426592797784
+  }
+}

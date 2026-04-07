@@ -11,6 +11,7 @@ import RelationshipsPanel from '@/components/RelationshipsPanel';
 import ContextMenu from '@/components/ContextMenu';
 import DataPanel from '@/components/DataPanel';
 import AddInstanceModal from '@/components/AddInstanceModal';
+import JsonPanel from '@/components/JsonPanel';
 import { useDataStore } from '@/store/dataStore';
 
 const GraphCanvas = dynamic(() => import('@/components/Canvas'), {
@@ -21,6 +22,12 @@ const GraphCanvas = dynamic(() => import('@/components/Canvas'), {
     </div>
   ),
 });
+
+function JsonPanelWrapper() {
+  const open = useDataStore((s) => s.jsonPanelOpen);
+  const setOpen = useDataStore((s) => s.setJsonPanelOpen);
+  return <JsonPanel open={open} onClose={() => setOpen(false)} />;
+}
 
 function SidePanel() {
   const hasSelection = useGraphStore((s) =>
@@ -64,10 +71,11 @@ export default function Home() {
 
       if ((e.key === 'z' || e.code === 'KeyZ') && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
+        const isSchema = useDataStore.getState().mode === 'schema';
         if (e.shiftKey) {
-          useGraphStore.getState().redo();
+          isSchema ? useGraphStore.getState().redo() : useDataStore.getState().redo();
         } else {
-          useGraphStore.getState().undo();
+          isSchema ? useGraphStore.getState().undo() : useDataStore.getState().undo();
         }
         return;
       }
@@ -90,6 +98,7 @@ export default function Home() {
           <GraphCanvas />
         </div>
         <ContextMenu />
+        <JsonPanelWrapper />
         <SidePanel />
       </div>
       {/* Modal mounted at root so backdrop spans full viewport */}

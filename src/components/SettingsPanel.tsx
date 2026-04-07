@@ -227,6 +227,28 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                   {nodeSettings.shadowsEnabled ? 'On' : 'Off'}
                 </button>
               </div>
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-gray-300">Child owns relationship</label>
+                <button
+                  onClick={() => updateNodeSettings({ enforceChildOwnsRelationship: !nodeSettings.enforceChildOwnsRelationship })}
+                  className={`px-2 py-0.5 text-xs rounded transition-colors ${
+                    nodeSettings.enforceChildOwnsRelationship ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-400'
+                  }`}
+                >
+                  {nodeSettings.enforceChildOwnsRelationship ? 'On' : 'Off'}
+                </button>
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-gray-300">Show cardinality</label>
+                <button
+                  onClick={() => updateNodeSettings({ showCardinality: !nodeSettings.showCardinality })}
+                  className={`px-2 py-0.5 text-xs rounded transition-colors ${
+                    nodeSettings.showCardinality ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-400'
+                  }`}
+                >
+                  {nodeSettings.showCardinality ? 'On' : 'Off'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

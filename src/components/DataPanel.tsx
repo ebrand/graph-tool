@@ -200,6 +200,20 @@ export default function DataPanel() {
         {totalInstances > 0 && (
           <span className="text-xs text-gray-500">{totalInstances} total</span>
         )}
+        <button
+          onClick={() => useDataStore.getState().expandAllNodes()}
+          className="px-1.5 py-0.5 text-[10px] text-gray-500 hover:text-gray-300 transition-colors"
+          title="Expand all"
+        >
+          ▼
+        </button>
+        <button
+          onClick={() => useDataStore.getState().collapseAllNodes()}
+          className="px-1.5 py-0.5 text-[10px] text-gray-500 hover:text-gray-300 transition-colors"
+          title="Collapse all"
+        >
+          ▲
+        </button>
       </div>
 
       {/* Node list */}
@@ -207,7 +221,7 @@ export default function DataPanel() {
         {nodes.length === 0 ? (
           <p className="p-4 text-xs text-gray-500">No schema nodes defined.</p>
         ) : (
-          nodes.map((node) => (
+          [...nodes].sort((a, b) => a.name.localeCompare(b.name)).map((node) => (
             <NodeSection
               key={node.id}
               node={node}

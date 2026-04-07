@@ -163,6 +163,7 @@ export default function AddInstanceModal() {
   const baseNode = useGraphStore((s) => s.nodes.find((n) => n.id === nodeId));
   const allNodes = useGraphStore((s) => s.nodes);
   const relationships = useGraphStore((s) => s.relationships);
+  const enforceChildOwns = useGraphStore((s) => s.nodeSettings.enforceChildOwnsRelationship);
 
   // When the base node is abstract, the user first picks a concrete subtype
   const [subtypeId, setSubtypeId] = useState<string | null>(null);
@@ -266,15 +267,24 @@ export default function AddInstanceModal() {
       ? labelOverride.trim() !== ''
       : allRequiredFilled;
 
-  // Relationships to other node types (non-inherits, either direction)
+  // Outgoing relationships only (source = this node or ancestors).
+  // Outgoing relationships (child→parent): shown prominently.
+  // Incoming relationships (parent→child): shown as optional "link existing" selectors.
   type RelDir = 'out' | 'in';
+  const effectiveNodeIds = new Set([effectiveNode.id, ...ancestors.map((a) => a.id)]);
   const relevantRels: Array<{ rel: Relationship; dir: RelDir; otherNodeId: string }> = [
     ...relationships
-      .filter((r) => r.sourceId === effectiveNode.id && r.kind !== 'inherits-from')
+      .filter((r) => effectiveNodeIds.has(r.sourceId) && r.kind !== 'inherits-from')
       .map((r) => ({ rel: r, dir: 'out' as RelDir, otherNodeId: r.targetId })),
-    ...relationships
-      .filter((r) => r.targetId === effectiveNode.id && r.kind !== 'inherits-from')
-      .map((r) => ({ rel: r, dir: 'in' as RelDir, otherNodeId: r.sourceId })),
+    // Incoming relationships: only when "child owns relationship" is off
+    ...(enforceChildOwns ? [] : relationships
+      .filter((r) => effectiveNodeIds.has(r.targetId) && r.kind !== 'inherits-from')
+      // Exclude if the same pair already appears as outgoing (bidirectional)
+      .filter((r) => !relationships.some(
+        (o) => o.sourceId === r.targetId && o.targetId === r.sourceId && o.kind !== 'inherits-from'
+          && effectiveNodeIds.has(o.sourceId)
+      ))
+      .map((r) => ({ rel: r, dir: 'in' as RelDir, otherNodeId: r.sourceId }))),
   ];
 
   const resetForm = () => {
@@ -297,14 +307,30 @@ export default function AddInstanceModal() {
     const scatter = { x: (Math.random() - 0.5) * 1.5, y: (Math.random() - 0.5) * 1.5 };
     const pos = { x: effectiveNode.position.x + scatter.x, y: effectiveNode.position.y + scatter.y };
     addNodeInstance(effectiveNode.id, label, fields, previewId, pos);
-    // Create relationship instances for any linked targets
+    // Create relationship instances for any linked targets,
+    // plus auto-create reverse relationships if they exist in the schema
     for (const { rel, dir } of relevantRels) {
       const selectedId = relTargets[`${rel.id}:${dir}`];
       if (!selectedId) continue;
       if (dir === 'out') {
         addRelationshipInstance(rel.id, previewId, selectedId, []);
+        // Auto-create reverse if it exists
+        const reverseRel = relationships.find(
+          (r) => r.sourceId === rel.targetId && r.targetId === rel.sourceId && r.kind !== 'inherits-from'
+        );
+        if (reverseRel) {
+          addRelationshipInstance(reverseRel.id, selectedId, previewId, []);
+        }
       } else {
+        // Incoming: the selected instance is the source, new instance is the target
         addRelationshipInstance(rel.id, selectedId, previewId, []);
+        // Auto-create reverse if it exists
+        const reverseRel = relationships.find(
+          (r) => r.sourceId === rel.targetId && r.targetId === rel.sourceId && r.kind !== 'inherits-from'
+        );
+        if (reverseRel) {
+          addRelationshipInstance(reverseRel.id, previewId, selectedId, []);
+        }
       }
     }
     addedCountRef.current += 1;
@@ -482,7 +508,7 @@ export default function AddInstanceModal() {
                 const relKey = `${rel.id}:${dir}`;
                 const dirLabel = dir === 'out'
                   ? `→ ${rel.name} → ${otherNode.name}`
-                  : `${otherNode.name} → ${rel.name} →`;
+                  : `← ${otherNode.name} ${rel.name} (link existing)`;
                 return (
                   <div key={relKey}>
                     <label className="flex items-center gap-1.5 text-[11px] text-gray-500 mb-1">

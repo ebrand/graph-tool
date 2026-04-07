@@ -71,6 +71,8 @@ export interface NodeSettings {
   shadowsEnabled: boolean;
   palette: string[];
   relTextPosition: number; // 0 = source end, 50 = center, 100 = target end
+  enforceChildOwnsRelationship: boolean;
+  showCardinality: boolean;
 }
 
 export interface FieldValue {

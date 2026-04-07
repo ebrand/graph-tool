@@ -152,7 +152,7 @@ export default function GraphNode({ id, name, color, textColor, borderColor, hig
         }}
       >
         <shapeGeometry args={[nodeShape]} />
-        <meshBasicMaterial color={color} />
+        <meshBasicMaterial color={color} opacity={0.8} transparent />
       </mesh>
 
       {/* Node border — thickens and changes color on select/hover; dashed violet for abstract nodes */}

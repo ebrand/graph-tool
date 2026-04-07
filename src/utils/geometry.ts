@@ -127,10 +127,10 @@ export function getArrowHeadPoints(
   return { points: [end, left, right], lineEnd };
 }
 
-// UML inheritance: wider, more equilateral hollow triangle
-const INH_HEIGHT = 0.175;
-const INH_HALF_WIDTH = 0.11;
-const INH_GAP = 0.0625;
+// UML inheritance: same size as regular arrowhead
+const INH_HEIGHT = ARROW_SIZE;
+const INH_HALF_WIDTH = ARROW_SIZE * 0.5;
+const INH_GAP = ARROW_GAP;
 
 /**
  * Returns points for a UML-style hollow inheritance triangle.

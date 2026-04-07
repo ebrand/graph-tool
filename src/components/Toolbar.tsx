@@ -20,6 +20,8 @@ export default function Toolbar() {
   const mode = useDataStore((s) => s.mode);
   const setMode = useDataStore((s) => s.setMode);
   const isDirtyData = useDataStore((s) => s.isDirty);
+  const jsonPanelOpen = useDataStore((s) => s.jsonPanelOpen);
+  const setJsonPanelOpen = useDataStore((s) => s.setJsonPanelOpen);
 
   const hasSelection = selectedNodeIds.length > 0 || selectedRelationshipIds.length > 0;
   const isSchemaMode = mode === 'schema';
@@ -62,6 +64,15 @@ export default function Toolbar() {
         </button>
         {fileOpen && <FileMenu onClose={() => setFileOpen(false)} />}
       </div>
+
+      <button
+        onClick={() => setJsonPanelOpen(!jsonPanelOpen)}
+        className={`px-3 py-1.5 text-sm rounded transition-colors ${
+          jsonPanelOpen ? 'bg-gray-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+        }`}
+      >
+        JSON
+      </button>
 
       <div className="flex-1" />
 

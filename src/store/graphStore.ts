@@ -4,6 +4,15 @@ import { GraphNode, Relationship, DragState, NodeDragState, ThemeColors, GridSet
 import { snapToGrid } from '@/utils/geometry';
 import { forceDirectedLayout } from '@/utils/forceLayout';
 
+// Lazy accessor to avoid circular dependency at import time.
+// Returns null during SSR/prerender when the module isn't available.
+let _dataStoreRef: (() => unknown) | null = null;
+export function _setDataStoreRef(ref: () => unknown) { _dataStoreRef = ref; }
+function getDataStore(): { nodeInstances: { id: string; schemaNodeId: string }[]; relationshipInstances: { id: string; schemaRelationshipId: string }[]; deleteNodeInstance: (id: string) => void; deleteRelationshipInstance: (id: string) => void } | null {
+  if (!_dataStoreRef) return null;
+  return _dataStoreRef() as ReturnType<typeof getDataStore>;
+}
+
 function migrateMetadata(raw: unknown): MetadataEntry[] {
   if (!Array.isArray(raw)) return [];
   return raw.map((m: unknown): MetadataEntry => {
@@ -75,6 +84,8 @@ export const DEFAULT_NODE_SETTINGS: NodeSettings = {
     '#d97706', '#dc2626', '#7c3aed', '#db2777',
   ],
   relTextPosition: 35,
+  enforceChildOwnsRelationship: false,
+  showCardinality: true,
 };
 
 export interface MarqueeState {
@@ -93,6 +104,7 @@ interface GraphState {
   marqueeState: MarqueeState | null;
   contextMenu: { worldX: number; worldY: number; screenX: number; screenY: number; target?: { kind: 'node'; id: string } | { kind: 'relationship'; id: string } } | null;
   cameraState: { x: number; y: number; zoom: number } | null;
+  cameraStates: Record<string, { x: number; y: number; zoom: number }>;
   theme: ThemeColors;
   defaultTheme: ThemeColors;
   grid: GridSettings;
@@ -120,6 +132,8 @@ interface GraphState {
   setMarqueeState: (state: MarqueeState | null) => void;
   setContextMenu: (menu: { worldX: number; worldY: number; screenX: number; screenY: number; target?: { kind: 'node'; id: string } | { kind: 'relationship'; id: string } } | null) => void;
   setCameraState: (state: { x: number; y: number; zoom: number }) => void;
+  setCameraStateForMode: (mode: string, state: { x: number; y: number; zoom: number }) => void;
+  getCameraStateForMode: (mode: string) => { x: number; y: number; zoom: number } | null;
   updateTheme: (updates: Partial<ThemeColors>) => void;
   setDefaultTheme: () => void;
   updateGrid: (updates: Partial<GridSettings>) => void;
@@ -189,6 +203,7 @@ export const useGraphStore = create<GraphState>()(
       marqueeState: null,
       contextMenu: null,
       cameraState: null,
+      cameraStates: {},
       theme: { ...DEFAULT_THEME },
       defaultTheme: { ...DEFAULT_THEME },
       grid: { ...DEFAULT_GRID },
@@ -284,6 +299,17 @@ export const useGraphStore = create<GraphState>()(
 
       deleteNode: (id) => {
         pushUndo(get());
+        // Cascade: remove data instances for this schema node and its relationships
+        const ds = getDataStore();
+        if (ds) {
+          const instToRemove = ds.nodeInstances.filter((ni) => ni.schemaNodeId === id);
+          for (const ni of instToRemove) ds.deleteNodeInstance(ni.id);
+          const relsToDelete = get().relationships.filter((r) => r.sourceId === id || r.targetId === id);
+          for (const rel of relsToDelete) {
+            const riToRemove = ds.relationshipInstances.filter((ri) => ri.schemaRelationshipId === rel.id);
+            for (const ri of riToRemove) ds.deleteRelationshipInstance(ri.id);
+          }
+        }
         set((s) => ({
           nodes: s.nodes.filter((n) => n.id !== id),
           relationships: s.relationships.filter(
@@ -307,6 +333,13 @@ export const useGraphStore = create<GraphState>()(
           (r) => r.sourceId === relSourceId && r.targetId === relTargetId
         );
         if (existing) return;
+        // Enforce child-owns-relationship: block if reverse already exists
+        if (get().nodeSettings.enforceChildOwnsRelationship) {
+          const reverse = get().relationships.find(
+            (r) => r.sourceId === relTargetId && r.targetId === relSourceId && r.kind !== 'inherits-from'
+          );
+          if (reverse) return; // silently block bidirectional
+        }
 
         const rel: Relationship = fromAbstract
           ? {
@@ -353,6 +386,12 @@ export const useGraphStore = create<GraphState>()(
 
       deleteRelationship: (id) => {
         pushUndo(get());
+        // Cascade: remove data instances that reference this schema relationship
+        const ds = getDataStore();
+        if (ds) {
+          const toRemove = ds.relationshipInstances.filter((ri) => ri.schemaRelationshipId === id);
+          for (const ri of toRemove) ds.deleteRelationshipInstance(ri.id);
+        }
         set((s) => ({
           relationships: s.relationships.filter((r) => r.id !== id),
           selectedRelationshipIds: s.selectedRelationshipIds.filter((rid) => rid !== id),
@@ -388,20 +427,36 @@ export const useGraphStore = create<GraphState>()(
 
       deleteSelected: () => {
         pushUndo(get());
-        set((s) => {
-          const nodeIdSet = new Set(s.selectedNodeIds);
-          const relIdSet = new Set(s.selectedRelationshipIds);
-          const remainingNodes = s.nodes.filter((n) => !nodeIdSet.has(n.id));
-          const remainingRels = s.relationships.filter(
+        const s = get();
+        const nodeIdSet = new Set(s.selectedNodeIds);
+        const relIdSet = new Set(s.selectedRelationshipIds);
+
+        // Cascade: remove data instances for deleted schema nodes and relationships
+        const ds = getDataStore();
+        if (ds) {
+          for (const nid of nodeIdSet) {
+            const instToRemove = ds.nodeInstances.filter((ni) => ni.schemaNodeId === nid);
+            for (const ni of instToRemove) ds.deleteNodeInstance(ni.id);
+          }
+          const removedRelIds = new Set<string>();
+          for (const rid of relIdSet) removedRelIds.add(rid);
+          for (const rel of s.relationships) {
+            if (nodeIdSet.has(rel.sourceId) || nodeIdSet.has(rel.targetId)) removedRelIds.add(rel.id);
+          }
+          for (const rid of removedRelIds) {
+            const riToRemove = ds.relationshipInstances.filter((ri) => ri.schemaRelationshipId === rid);
+            for (const ri of riToRemove) ds.deleteRelationshipInstance(ri.id);
+          }
+        }
+
+        set({
+          nodes: s.nodes.filter((n) => !nodeIdSet.has(n.id)),
+          relationships: s.relationships.filter(
             (r) => !relIdSet.has(r.id) && !nodeIdSet.has(r.sourceId) && !nodeIdSet.has(r.targetId)
-          );
-          return {
-            nodes: remainingNodes,
-            relationships: remainingRels,
-            selectedNodeIds: [],
-            selectedRelationshipIds: [],
-            isDirty: true,
-          };
+          ),
+          selectedNodeIds: [],
+          selectedRelationshipIds: [],
+          isDirty: true,
         });
       },
 
@@ -416,6 +471,9 @@ export const useGraphStore = create<GraphState>()(
       setContextMenu: (contextMenu) => set({ contextMenu }),
 
       setCameraState: (cameraState) => set({ cameraState }),
+      setCameraStateForMode: (mode, state) =>
+        set((s) => ({ cameraStates: { ...s.cameraStates, [mode]: state } })),
+      getCameraStateForMode: (mode) => get().cameraStates[mode] ?? null,
 
       updateTheme: (updates) =>
         set((s) => {
@@ -567,6 +625,7 @@ export const useGraphStore = create<GraphState>()(
         nodeSettings: state.nodeSettings,
         defaultNodeSettings: state.defaultNodeSettings,
         cameraState: state.cameraState,
+        cameraStates: state.cameraStates,
       }),
       merge: (persisted, current) => {
         const p = persisted as Partial<GraphState>;
@@ -581,6 +640,7 @@ export const useGraphStore = create<GraphState>()(
           defaultGrid: { ...DEFAULT_GRID, ...(p.defaultGrid ?? {}) },
           nodeSettings: { ...DEFAULT_NODE_SETTINGS, ...(p.nodeSettings ?? {}) },
           defaultNodeSettings: { ...DEFAULT_NODE_SETTINGS, ...(p.defaultNodeSettings ?? {}) },
+          cameraStates: (p as Record<string, unknown>).cameraStates as Record<string, { x: number; y: number; zoom: number }> ?? {},
         };
       },
     }

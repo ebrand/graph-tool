@@ -31,6 +31,8 @@ export default function InstanceNode({
   const clickStart = useRef<{ x: number; y: number } | null>(null);
 
   const selectInstance = useDataStore((s) => s.selectInstance);
+  const selectedInstanceIds = useDataStore((s) => s.selectedInstanceIds);
+  const toggleInstanceSelection = useDataStore((s) => s.toggleInstanceSelection);
   const setNodeDragState = useGraphStore((s) => s.setNodeDragState);
   const setInstanceDragState = useGraphStore((s) => s.setInstanceDragState);
 
@@ -58,11 +60,17 @@ export default function InstanceNode({
         currentPoint: { x: position.x, y: position.y },
       });
       selectInstance(id);
+    } else if (e.nativeEvent.shiftKey) {
+      // Shift+click: toggle in/out of multi-selection
+      toggleInstanceSelection(id);
     } else {
       setNodeDragState({ nodeId: id, offset: { x: e.point.x - position.x, y: e.point.y - position.y } });
-      selectInstance(id);
+      // Preserve multi-selection if this node is already selected
+      if (!selectedInstanceIds.includes(id)) {
+        selectInstance(id);
+      }
     }
-  }, [id, position, readOnly, selectInstance, setNodeDragState, setInstanceDragState]);
+  }, [id, position, readOnly, selectInstance, selectedInstanceIds, toggleInstanceSelection, setNodeDragState, setInstanceDragState]);
 
   const onPointerUp = useCallback((e: ThreeEvent<PointerEvent>) => {
     if (readOnly) return;
@@ -132,7 +140,7 @@ export default function InstanceNode({
         onPointerOut={() => { setHovered(false); document.body.style.cursor = 'default'; }}
       >
         <shapeGeometry args={[nodeShape]} />
-        <meshBasicMaterial color={color} />
+        <meshBasicMaterial color={color} opacity={0.8} transparent />
       </mesh>
 
       {/* Border */}
