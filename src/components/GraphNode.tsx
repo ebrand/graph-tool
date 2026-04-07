@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useCallback, useMemo, Suspense } from 'react';
+import { useState, useCallback, useMemo, useRef, Suspense } from 'react';
 import { ThreeEvent } from '@react-three/fiber';
 import { Text, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGraphStore } from '@/store/graphStore';
-import { NODE_HEIGHT, CORNER_RADIUS, NODE_FONT_SIZE, getNodeWidth, getJiggledRectPoints } from '@/utils/geometry';
+import { useDataStore } from '@/store/dataStore';
+import { NODE_HEIGHT, CORNER_RADIUS, NODE_FONT_SIZE, getNodeWidth, getJiggledRectPoints, makeRoundedRectShape } from '@/utils/geometry';
 
 interface GraphNodeProps {
   id: string;
@@ -14,28 +15,16 @@ interface GraphNodeProps {
   textColor: string;
   borderColor: string;
   highlightColor: string;
+  abstractColor: string;
   position: { x: number; y: number };
   isSelected: boolean;
+  instanceCount?: number;
+  isAbstract?: boolean;
 }
 
-function makeRoundedRectShape(w: number, h: number, r: number): THREE.Shape {
-  const shape = new THREE.Shape();
-  const hw = w / 2;
-  const hh = h / 2;
-  shape.moveTo(-hw + r, -hh);
-  shape.lineTo(hw - r, -hh);
-  shape.quadraticCurveTo(hw, -hh, hw, -hh + r);
-  shape.lineTo(hw, hh - r);
-  shape.quadraticCurveTo(hw, hh, hw - r, hh);
-  shape.lineTo(-hw + r, hh);
-  shape.quadraticCurveTo(-hw, hh, -hw, hh - r);
-  shape.lineTo(-hw, -hh + r);
-  shape.quadraticCurveTo(-hw, -hh, -hw + r, -hh);
-  return shape;
-}
-
-export default function GraphNode({ id, name, color, textColor, borderColor, highlightColor, position, isSelected }: GraphNodeProps) {
+export default function GraphNode({ id, name, color, textColor, borderColor, highlightColor, abstractColor, position, isSelected, instanceCount, isAbstract }: GraphNodeProps) {
   const [hovered, setHovered] = useState(false);
+  const clickStart = useRef<{ x: number; y: number } | null>(null);
 
   const selectNode = useGraphStore((s) => s.selectNode);
   const toggleNodeSelection = useGraphStore((s) => s.toggleNodeSelection);
@@ -44,6 +33,10 @@ export default function GraphNode({ id, name, color, textColor, borderColor, hig
   const setNodeDragState = useGraphStore((s) => s.setNodeDragState);
   const dragState = useGraphStore((s) => s.dragState);
   const addRelationship = useGraphStore((s) => s.addRelationship);
+  const setContextMenu = useGraphStore((s) => s.setContextMenu);
+
+  const dataEntryMode = useDataStore((s) => s.mode === 'data-entry');
+  const openAddModal = useDataStore((s) => s.setAddingInstanceForNodeId);
 
   const minWidthPx = useGraphStore((s) => s.nodeSettings.minWidthPx);
   const jiggle = useGraphStore((s) => s.nodeSettings.jiggleEnabled);
@@ -63,6 +56,8 @@ export default function GraphNode({ id, name, color, textColor, borderColor, hig
 
   const onPointerDown = useCallback((e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
+    clickStart.current = { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY };
+    if (e.nativeEvent.button === 2) return; // right-click handled by onContextMenu
 
     if (e.nativeEvent.altKey) {
       setDragState({
@@ -88,6 +83,18 @@ export default function GraphNode({ id, name, color, textColor, borderColor, hig
       }
     }
   }, [id, position, selectNode, toggleNodeSelection, selectedNodeIds, setDragState, setNodeDragState]);
+
+  const onContextMenu = useCallback((e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation();
+    e.nativeEvent.preventDefault();
+    setContextMenu({
+      worldX: position.x,
+      worldY: position.y,
+      screenX: e.nativeEvent.clientX,
+      screenY: e.nativeEvent.clientY,
+      target: { kind: 'node', id },
+    });
+  }, [id, position, setContextMenu]);
 
   const onNodePointerUp = useCallback((e: ThreeEvent<PointerEvent>) => {
     if (dragState && dragState.sourceNodeId !== id) {
@@ -117,11 +124,24 @@ export default function GraphNode({ id, name, color, textColor, borderColor, hig
 
       {/* Main rounded rectangle */}
       <mesh
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (dataEntryMode) {
+            // Suppress if the pointer moved (was a drag, not a click)
+            const start = clickStart.current;
+            if (start) {
+              const dx = e.nativeEvent.clientX - start.x;
+              const dy = e.nativeEvent.clientY - start.y;
+              if (dx * dx + dy * dy > 25) return; // moved > 5px
+            }
+            openAddModal(id);
+          }
+        }}
         onPointerDown={onPointerDown}
         onPointerUp={(e) => {
           onNodePointerUp(e);
         }}
+        onContextMenu={onContextMenu}
         onPointerOver={() => {
           setHovered(true);
           document.body.style.cursor = 'pointer';
@@ -135,11 +155,14 @@ export default function GraphNode({ id, name, color, textColor, borderColor, hig
         <meshBasicMaterial color={color} />
       </mesh>
 
-      {/* Node border — thickens and changes color on select/hover */}
+      {/* Node border — thickens and changes color on select/hover; dashed violet for abstract nodes */}
       <Line
         points={borderPoints}
-        color={isSelected ? highlightColor : hovered ? '#94a3b8' : borderColor}
+        color={isSelected ? highlightColor : isAbstract ? abstractColor : hovered ? '#94a3b8' : borderColor}
         lineWidth={isSelected ? 3 : hovered ? 2 : 1.5}
+        dashed={isAbstract && !isSelected}
+        dashSize={0.1}
+        gapSize={0.05}
         position={[0, 0, 0.002]}
       />
 
@@ -153,6 +176,40 @@ export default function GraphNode({ id, name, color, textColor, borderColor, hig
           anchorY="middle"
         >
           {name}
+        </Text>
+      </Suspense>
+
+      {/* Instance count badge (data mode) */}
+      {instanceCount !== undefined && instanceCount > 0 && (
+        <InstanceBadge count={instanceCount} nodeWidth={nodeWidth} />
+      )}
+    </group>
+  );
+}
+
+function InstanceBadge({ count, nodeWidth }: { count: number; nodeWidth: number }) {
+  const hw = nodeWidth / 2;
+  const hh = NODE_HEIGHT / 2;
+  const label = count > 999 ? '999+' : String(count);
+  // Position at top-right corner, overlapping the node edge
+  const bx = hw - 0.06;
+  const by = hh;
+
+  return (
+    <group position={[bx, by, 0.03]}>
+      <mesh>
+        <circleGeometry args={[0.13, 20]} />
+        <meshBasicMaterial color="#f59e0b" />
+      </mesh>
+      <Suspense fallback={null}>
+        <Text
+          position={[0, 0, 0.005]}
+          fontSize={0.085}
+          color="#000000"
+          anchorX="center"
+          anchorY="middle"
+        >
+          {label}
         </Text>
       </Suspense>
     </group>

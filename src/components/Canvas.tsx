@@ -1,13 +1,15 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useRef } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Canvas as R3FCanvas, ThreeEvent, useFrame, useThree } from '@react-three/fiber';
-import { MapControls } from '@react-three/drei';
+import { MapControls, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGraphStore } from '@/store/graphStore';
+import { useDataStore } from '@/store/dataStore';
 import { getNodeWidth, getEdgePoints, snapToGrid, NODE_HEIGHT } from '@/utils/geometry';
 import GraphNode from './GraphNode';
 import GraphEdge from './GraphEdge';
+import InstanceNode from './InstanceNode';
 import DragLine from './DragLine';
 import DashedGrid from './DashedGrid';
 import SelectionRect from './SelectionRect';
@@ -25,6 +27,8 @@ function Scene() {
   const nodeSettings = useGraphStore((s) => s.nodeSettings);
   const setDragState = useGraphStore((s) => s.setDragState);
   const setNodeDragState = useGraphStore((s) => s.setNodeDragState);
+  const instanceDragState = useGraphStore((s) => s.instanceDragState);
+  const setInstanceDragState = useGraphStore((s) => s.setInstanceDragState);
   const setMarqueeState = useGraphStore((s) => s.setMarqueeState);
   const updateNode = useGraphStore((s) => s.updateNode);
   const clearSelection = useGraphStore((s) => s.clearSelection);
@@ -36,10 +40,28 @@ function Scene() {
   const lastSelectionUpdate = useRef(0);
 
   const setCameraState = useGraphStore((s) => s.setCameraState);
+  const mode = useDataStore((s) => s.mode);
+  const isDataGraph = mode === 'data';
+  const isDataEntry = mode === 'data-entry';
+  const nodeInstances = useDataStore((s) => s.nodeInstances);
+  const relationshipInstances = useDataStore((s) => s.relationshipInstances);
+  const selectedInstanceId = useDataStore((s) => s.selectedInstanceId);
+  const selectInstance = useDataStore((s) => s.selectInstance);
+  const updateNodeInstance = useDataStore((s) => s.updateNodeInstance);
+
+  const instanceCounts = useMemo(() => {
+    if (!isDataEntry) return null;
+    const counts = new Map<string, number>();
+    for (const ni of nodeInstances) {
+      counts.set(ni.schemaNodeId, (counts.get(ni.schemaNodeId) ?? 0) + 1);
+    }
+    return counts;
+  }, [isDataEntry, nodeInstances]);
 
   // Keep camera up vector stable and restore saved camera position
-  const { camera } = useThree();
+  const { camera, gl } = useThree();
   const cameraInitialized = useRef(false);
+  const controlsRef = useRef<any>(null);
   useEffect(() => {
     camera.up.set(0, 1, 0);
     if (!cameraInitialized.current) {
@@ -52,6 +74,32 @@ function Scene() {
       cameraInitialized.current = true;
     }
   }, [camera]);
+
+  // Trackpad two-finger scroll → pan; pinch (ctrlKey) → zoom (handled by MapControls)
+  useEffect(() => {
+    const canvas = gl.domElement;
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) return; // pinch-to-zoom: let MapControls handle it
+      e.preventDefault();
+      e.stopImmediatePropagation(); // prevent MapControls from zooming on scroll
+
+      const cam = camera as THREE.OrthographicCamera;
+      // deltaMode 1 = line units (~20px each), 0 = pixel units
+      const scale = e.deltaMode === 1 ? 20 : 1;
+      const dx = (e.deltaX * scale) / cam.zoom;
+      const dy = (e.deltaY * scale) / cam.zoom;
+
+      camera.position.x -= dx;
+      camera.position.y += dy;
+      // Keep controls target in sync so MapControls doesn't snap back
+      if (controlsRef.current) {
+        controlsRef.current.target.x -= dx;
+        controlsRef.current.target.y += dy;
+      }
+    };
+    canvas.addEventListener('wheel', onWheel, { passive: false, capture: true });
+    return () => canvas.removeEventListener('wheel', onWheel, { capture: true });
+  }, [camera, gl]);
 
   // Save camera state when it changes (throttled)
   const lastCameraSave = useRef(0);
@@ -96,6 +144,19 @@ function Scene() {
     [nodes, nodeSettings.minWidthPx]
   );
 
+  const handleBgContextMenu = useCallback(
+    (e: ThreeEvent<MouseEvent>) => {
+      e.nativeEvent.preventDefault();
+      setContextMenu({
+        worldX: e.point.x,
+        worldY: e.point.y,
+        screenX: e.nativeEvent.clientX,
+        screenY: e.nativeEvent.clientY,
+      });
+    },
+    [setContextMenu]
+  );
+
   const handlePointerDown = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
       // Close context menu on left click
@@ -116,7 +177,9 @@ function Scene() {
 
   const handlePointerMove = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
-      if (dragState) {
+      if (instanceDragState) {
+        setInstanceDragState({ ...instanceDragState, currentPoint: { x: e.point.x, y: e.point.y } });
+      } else if (dragState) {
         setDragState({
           ...dragState,
           currentPoint: { x: e.point.x, y: e.point.y },
@@ -127,25 +190,30 @@ function Scene() {
           y: e.point.y - nodeDragState.offset.y,
         };
         const newPos = grid.snapEnabled ? snapToGrid(raw, grid.minorGridPx) : raw;
-        // Read fresh state to avoid stale closure
-        const currentState = useGraphStore.getState();
-        const anchorNode = currentState.nodes.find((n) => n.id === nodeDragState.nodeId);
-        const selIds = currentState.selectedNodeIds;
-        if (anchorNode && selIds.length > 1 && selIds.includes(nodeDragState.nodeId)) {
-          const dx = newPos.x - anchorNode.position.x;
-          const dy = newPos.y - anchorNode.position.y;
-          if (dx !== 0 || dy !== 0) {
-            for (const nid of selIds) {
-              const node = currentState.nodes.find((n) => n.id === nid);
-              if (node) {
-                updateNode(nid, {
-                  position: { x: node.position.x + dx, y: node.position.y + dy },
-                });
+        if (isDataGraph) {
+          // In data graph mode drag moves instance nodes
+          updateNodeInstance(nodeDragState.nodeId, { position: newPos });
+        } else {
+          // Read fresh state to avoid stale closure
+          const currentState = useGraphStore.getState();
+          const anchorNode = currentState.nodes.find((n) => n.id === nodeDragState.nodeId);
+          const selIds = currentState.selectedNodeIds;
+          if (anchorNode && selIds.length > 1 && selIds.includes(nodeDragState.nodeId)) {
+            const dx = newPos.x - anchorNode.position.x;
+            const dy = newPos.y - anchorNode.position.y;
+            if (dx !== 0 || dy !== 0) {
+              for (const nid of selIds) {
+                const node = currentState.nodes.find((n) => n.id === nid);
+                if (node) {
+                  updateNode(nid, {
+                    position: { x: node.position.x + dx, y: node.position.y + dy },
+                  });
+                }
               }
             }
+          } else {
+            updateNode(nodeDragState.nodeId, { position: newPos });
           }
-        } else {
-          updateNode(nodeDragState.nodeId, { position: newPos });
         }
       } else if (marqueeState) {
         const current = { x: e.point.x, y: e.point.y };
@@ -158,7 +226,7 @@ function Scene() {
         }
       }
     },
-    [dragState, nodeDragState, marqueeState, setDragState, updateNode, grid, setMarqueeState, selectMultiple, getNodesInRect]
+    [dragState, nodeDragState, marqueeState, setDragState, updateNode, grid, setMarqueeState, selectMultiple, getNodesInRect, isDataGraph]
   );
 
   const handlePointerUp = useCallback(
@@ -184,7 +252,9 @@ function Scene() {
         const dx = Math.abs(current.x - start.x);
         const dy = Math.abs(current.y - start.y);
 
-        if (dx < 0.05 && dy < 0.05) {
+        if (isDataGraph) {
+          if (dx < 0.05 && dy < 0.05) selectInstance(null);
+        } else if (dx < 0.05 && dy < 0.05) {
           clearSelection();
         } else {
           // Final selection pass to catch anything throttle missed
@@ -193,7 +263,7 @@ function Scene() {
         setMarqueeState(null);
       }
     },
-    [dragState, nodeDragState, marqueeState, grid, setDragState, setNodeDragState, setMarqueeState, clearSelection, selectMultiple, getNodesInRect, addNodeWithRelationship]
+    [dragState, nodeDragState, marqueeState, grid, setDragState, setNodeDragState, setMarqueeState, clearSelection, selectMultiple, getNodesInRect, addNodeWithRelationship, isDataGraph]
   );
 
   // Safety net: clear drag/marquee state on any pointerup, even if it's over a node/edge.
@@ -205,6 +275,7 @@ function Scene() {
         if (state.marqueeState) setMarqueeState(null);
         if (state.dragState) setDragState(null);
         if (state.nodeDragState) setNodeDragState(null);
+        if (state.instanceDragState) setInstanceDragState(null);
       });
     };
     window.addEventListener('pointerup', handleGlobalUp);
@@ -217,6 +288,7 @@ function Scene() {
   return (
     <>
       <MapControls
+        ref={controlsRef}
         enableRotate={false}
         enableDamping={false}
         screenSpacePanning
@@ -233,6 +305,7 @@ function Scene() {
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onContextMenu={handleBgContextMenu}
       >
         <planeGeometry args={[200, 200]} />
         <meshBasicMaterial color={theme.canvasBg} />
@@ -241,74 +314,142 @@ function Scene() {
       {/* Grid */}
       <DashedGrid size={40} majorColor={theme.canvasGridMajor} minorColor={theme.canvasGridMinor} minorPx={grid.minorGridPx} majorPx={grid.majorGridPx} />
 
-      {/* Edges */}
-      {relationships.map((rel) => {
-        const source = nodes.find((n) => n.id === rel.sourceId);
-        const target = nodes.find((n) => n.id === rel.targetId);
-        if (!source || !target) return null;
+      {/* ── Schema mode + Data Entry mode: schema graph ── */}
+      {!isDataGraph && (
+        <>
+          {relationships.map((rel) => {
+            const source = nodes.find((n) => n.id === rel.sourceId);
+            const target = nodes.find((n) => n.id === rel.targetId);
+            if (!source || !target) return null;
+            const hasReverse = relationships.some(
+              (r) => r.sourceId === rel.targetId && r.targetId === rel.sourceId
+            );
+            const sourceSelected = singleSelectedNodeId === rel.sourceId;
+            const targetSelected = singleSelectedNodeId === rel.targetId;
+            const isThisSelected = selectedRelationshipIds.includes(rel.id);
+            const eitherEndSelected = sourceSelected || targetSelected;
+            if (hasReverse && !eitherEndSelected && !isThisSelected && rel.sourceId > rel.targetId) return null;
+            const biOffset = hasReverse && eitherEndSelected ? 0.08 : 0;
+            const showDoubleArrow = hasReverse && !eitherEndSelected && !isThisSelected;
+            return (
+              <GraphEdge
+                key={rel.id}
+                id={rel.id}
+                name={rel.name}
+                sourcePosition={source.position}
+                targetPosition={target.position}
+                sourceWidth={getNodeWidth(source.name, nodeSettings.minWidthPx)}
+                targetWidth={getNodeWidth(target.name, nodeSettings.minWidthPx)}
+                isSelected={isThisSelected}
+                sourceSelected={sourceSelected}
+                targetSelected={targetSelected}
+                isBidirectional={hasReverse}
+                showDoubleArrow={showDoubleArrow}
+                offset={biOffset}
+                edgeGapPx={nodeSettings.edgeGapPx}
+                highlightColor={theme.selectionHighlight}
+                lineColor={theme.relationshipLine}
+                textColor={theme.relationshipText}
+                abstractColor={theme.abstractColor}
+                sourceCardinality={rel.sourceCardinality}
+                targetCardinality={rel.targetCardinality}
+                kind={rel.kind}
+              />
+            );
+          })}
+          <Suspense fallback={null}>
+            {nodes.map((node) => (
+              <GraphNode
+                key={node.id}
+                id={node.id}
+                name={node.name}
+                color={node.color}
+                textColor={theme.nodeForeground}
+                borderColor={theme.nodeBorder}
+                highlightColor={theme.selectionHighlight}
+                abstractColor={theme.abstractColor}
+                position={node.position}
+                isSelected={selectedNodeIds.includes(node.id)}
+                instanceCount={instanceCounts?.get(node.id)}
+                isAbstract={node.abstract}
+              />
+            ))}
+          </Suspense>
+          <DragLine />
+          <SelectionRect />
+        </>
+      )}
 
-        const hasReverse = relationships.some(
-          (r) => r.sourceId === rel.targetId && r.targetId === rel.sourceId
-        );
-        const sourceSelected = singleSelectedNodeId === rel.sourceId;
-        const targetSelected = singleSelectedNodeId === rel.targetId;
-        const isThisSelected = selectedRelationshipIds.includes(rel.id);
-        const eitherEndSelected = sourceSelected || targetSelected;
+      {/* ── Data graph mode: instance graph ── */}
+      {isDataGraph && (
+        <>
+          {relationshipInstances.map((ri) => {
+            const srcInst = nodeInstances.find((ni) => ni.id === ri.sourceInstanceId);
+            const tgtInst = nodeInstances.find((ni) => ni.id === ri.targetInstanceId);
+            const schemaRel = relationships.find((r) => r.id === ri.schemaRelationshipId);
+            if (!srcInst || !tgtInst || !schemaRel) return null;
+            return (
+              <GraphEdge
+                key={ri.id}
+                id={ri.id}
+                name={schemaRel.name}
+                sourcePosition={srcInst.position}
+                targetPosition={tgtInst.position}
+                sourceWidth={getNodeWidth(srcInst.label, nodeSettings.minWidthPx)}
+                targetWidth={getNodeWidth(tgtInst.label, nodeSettings.minWidthPx)}
+                isSelected={false}
+                sourceSelected={false}
+                targetSelected={false}
+                isBidirectional={false}
+                showDoubleArrow={false}
+                offset={0}
+                edgeGapPx={nodeSettings.edgeGapPx}
+                highlightColor={theme.selectionHighlight}
+                lineColor={theme.relationshipLine}
+                textColor={theme.relationshipText}
+                abstractColor={theme.abstractColor}
+                kind={schemaRel.kind}
+              />
+            );
+          })}
+          <Suspense fallback={null}>
+            {nodeInstances.map((ni) => {
+              const schemaNode = nodes.find((n) => n.id === ni.schemaNodeId);
+              return (
+                <InstanceNode
+                  key={ni.id}
+                  id={ni.id}
+                  schemaNodeId={ni.schemaNodeId}
+                  label={ni.label}
+                  typeName={schemaNode?.name ?? ''}
+                  color={schemaNode?.color ?? theme.nodeBackground}
+                  textColor={theme.nodeForeground}
+                  borderColor={theme.nodeBorder}
+                  highlightColor={theme.selectionHighlight}
+                  position={ni.position}
+                  isSelected={selectedInstanceId === ni.id}
+                  readOnly={true}
+                />
+              );
+            })}
+          </Suspense>
 
-        // Bidirectional with neither end selected: only render one edge (deduplicate),
-        // shown as single line with double arrowheads
-        if (hasReverse && !eitherEndSelected && !isThisSelected && rel.sourceId > rel.targetId) {
-          return null;
-        }
-
-        const biOffset = hasReverse && eitherEndSelected ? 0.08 : 0;
-        const showDoubleArrow = hasReverse && !eitherEndSelected && !isThisSelected;
-
-        return (
-          <GraphEdge
-            key={rel.id}
-            id={rel.id}
-            name={rel.name}
-            sourcePosition={source.position}
-            targetPosition={target.position}
-            sourceWidth={getNodeWidth(source.name, nodeSettings.minWidthPx)}
-            targetWidth={getNodeWidth(target.name, nodeSettings.minWidthPx)}
-            isSelected={isThisSelected}
-            sourceSelected={sourceSelected}
-            targetSelected={targetSelected}
-            isBidirectional={hasReverse}
-            showDoubleArrow={showDoubleArrow}
-            offset={biOffset}
-            edgeGapPx={nodeSettings.edgeGapPx}
-            highlightColor={theme.selectionHighlight}
-            lineColor={theme.relationshipLine}
-            textColor={theme.relationshipText}
-          />
-        );
-      })}
-
-      {/* Nodes */}
-      <Suspense fallback={null}>
-        {nodes.map((node) => (
-          <GraphNode
-            key={node.id}
-            id={node.id}
-            name={node.name}
-            color={node.color}
-            textColor={theme.nodeForeground}
-            borderColor={theme.nodeBorder}
-            highlightColor={theme.selectionHighlight}
-            position={node.position}
-            isSelected={selectedNodeIds.includes(node.id)}
-          />
-        ))}
-      </Suspense>
-
-      {/* Drag line for relationship creation */}
-      <DragLine />
-
-      {/* Marquee selection rectangle */}
-      <SelectionRect />
+          {/* Relationship drag line */}
+          {instanceDragState && (
+            <Line
+              points={[
+                new THREE.Vector3(instanceDragState.sourcePosition.x, instanceDragState.sourcePosition.y, 0.05),
+                new THREE.Vector3(instanceDragState.currentPoint.x, instanceDragState.currentPoint.y, 0.05),
+              ]}
+              color="#60a5fa"
+              lineWidth={2}
+              dashed
+              dashSize={0.1}
+              gapSize={0.05}
+            />
+          )}
+        </>
+      )}
     </>
   );
 }
@@ -329,8 +470,11 @@ function KeyboardBridge() {
       if ((ke.key === 's' || ke.code === 'KeyS') && (ke.metaKey || ke.ctrlKey)) {
         ke.preventDefault();
         ke.stopPropagation();
-        const { quickSave } = require('@/components/FileMenu');
-        const name = quickSave(useGraphStore.getState().exportGraph);
+        const { quickSaveSchema, quickSaveData } = require('@/components/FileMenu');
+        const isSchema = useDataStore.getState().mode === 'schema';
+        const name = isSchema
+          ? quickSaveSchema(useGraphStore.getState().exportGraph)
+          : quickSaveData();
         if (!name) {
           alert('No previous save found. Use File > Save first.');
         }
@@ -368,32 +512,6 @@ function KeyboardBridge() {
   return null;
 }
 
-function ContextMenuBridge() {
-  const { camera, gl } = useThree();
-  const setContextMenu = useGraphStore((s) => s.setContextMenu);
-
-  useEffect(() => {
-    const canvas = gl.domElement;
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-      // Convert screen coords to world coords
-      const rect = canvas.getBoundingClientRect();
-      const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      const ndcY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-      const worldPos = new THREE.Vector3(ndcX, ndcY, 0).unproject(camera);
-      setContextMenu({
-        worldX: worldPos.x,
-        worldY: worldPos.y,
-        screenX: e.clientX,
-        screenY: e.clientY,
-      });
-    };
-    canvas.addEventListener('contextmenu', handleContextMenu);
-    return () => canvas.removeEventListener('contextmenu', handleContextMenu);
-  }, [camera, gl, setContextMenu]);
-
-  return null;
-}
 
 export default function GraphCanvas() {
   const canvasBg = useGraphStore((s) => s.theme.canvasBg);
@@ -409,7 +527,6 @@ export default function GraphCanvas() {
       <Suspense fallback={null}>
         <Scene />
         <KeyboardBridge />
-        <ContextMenuBridge />
       </Suspense>
     </R3FCanvas>
   );

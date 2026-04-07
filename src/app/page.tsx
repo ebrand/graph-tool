@@ -3,12 +3,15 @@
 import { useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useGraphStore } from '@/store/graphStore';
-import { quickSave } from '@/components/FileMenu';
+import { quickSaveSchema, quickSaveData } from '@/components/FileMenu';
 
 import Toolbar from '@/components/Toolbar';
 import PropertiesPanel from '@/components/PropertiesPanel';
 import RelationshipsPanel from '@/components/RelationshipsPanel';
 import ContextMenu from '@/components/ContextMenu';
+import DataPanel from '@/components/DataPanel';
+import AddInstanceModal from '@/components/AddInstanceModal';
+import { useDataStore } from '@/store/dataStore';
 
 const GraphCanvas = dynamic(() => import('@/components/Canvas'), {
   ssr: false,
@@ -23,6 +26,15 @@ function SidePanel() {
   const hasSelection = useGraphStore((s) =>
     s.selectedNodeIds.length > 0 || s.selectedRelationshipIds.length > 0
   );
+  const mode = useDataStore((s) => s.mode);
+
+  if (mode === 'data-entry' || mode === 'data') {
+    return (
+      <div className="absolute top-0 right-0 h-full w-72 bg-gray-800 border-l border-gray-700 z-10 flex flex-col">
+        <DataPanel />
+      </div>
+    );
+  }
 
   if (!hasSelection) return null;
 
@@ -42,10 +54,11 @@ export default function Home() {
 
       if ((e.key === 's' || e.code === 'KeyS') && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        const name = quickSave(useGraphStore.getState().exportGraph);
-        if (!name) {
-          alert('No previous save found. Use File > Save first.');
-        }
+        const isSchema = useDataStore.getState().mode === 'schema';
+        const name = isSchema
+          ? quickSaveSchema(useGraphStore.getState().exportGraph)
+          : quickSaveData();
+        if (!name) alert('No previous save found. Use File > Save first.');
         return;
       }
 
@@ -79,6 +92,8 @@ export default function Home() {
         <ContextMenu />
         <SidePanel />
       </div>
+      {/* Modal mounted at root so backdrop spans full viewport */}
+      <AddInstanceModal />
     </div>
   );
 }

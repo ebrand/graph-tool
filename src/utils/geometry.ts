@@ -127,6 +127,57 @@ export function getArrowHeadPoints(
   return { points: [end, left, right], lineEnd };
 }
 
+// UML inheritance: wider, more equilateral hollow triangle
+const INH_HEIGHT = 0.175;
+const INH_HALF_WIDTH = 0.11;
+const INH_GAP = 0.0625;
+
+/**
+ * Returns points for a UML-style hollow inheritance triangle.
+ * The tip points at `end` (the parent/supertype node).
+ * `lineEnd` is where the connecting line should terminate (at the triangle base).
+ */
+export function getInheritanceArrowPoints(
+  end: THREE.Vector3,
+  start: THREE.Vector3,
+): { points: THREE.Vector3[]; lineEnd: THREE.Vector3 } {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  if (dist === 0) return { points: [end, end, end], lineEnd: end };
+
+  const nx = dx / dist;
+  const ny = dy / dist;
+
+  // Base centre sits INH_HEIGHT back from the tip
+  const baseCenter = new THREE.Vector3(
+    end.x - nx * INH_HEIGHT,
+    end.y - ny * INH_HEIGHT,
+    0,
+  );
+
+  const left = new THREE.Vector3(
+    baseCenter.x + ny * INH_HALF_WIDTH,
+    baseCenter.y - nx * INH_HALF_WIDTH,
+    0,
+  );
+  const right = new THREE.Vector3(
+    baseCenter.x - ny * INH_HALF_WIDTH,
+    baseCenter.y + nx * INH_HALF_WIDTH,
+    0,
+  );
+
+  // The line from the source node ends just before the triangle base
+  const lineEnd = new THREE.Vector3(
+    end.x - nx * (INH_HEIGHT + INH_GAP),
+    end.y - ny * (INH_HEIGHT + INH_GAP),
+    0,
+  );
+
+  return { points: [end, left, right], lineEnd };
+}
+
 /**
  * Simple seeded pseudo-random number generator (mulberry32).
  * Returns a function that produces deterministic values in [-1, 1].
@@ -242,6 +293,22 @@ export function getJiggledLinePoints(
     ));
   }
   return points;
+}
+
+export function makeRoundedRectShape(w: number, h: number, r: number): THREE.Shape {
+  const shape = new THREE.Shape();
+  const hw = w / 2;
+  const hh = h / 2;
+  shape.moveTo(-hw + r, -hh);
+  shape.lineTo(hw - r, -hh);
+  shape.quadraticCurveTo(hw, -hh, hw, -hh + r);
+  shape.lineTo(hw, hh - r);
+  shape.quadraticCurveTo(hw, hh, hw - r, hh);
+  shape.lineTo(-hw + r, hh);
+  shape.quadraticCurveTo(-hw, hh, -hw, hh - r);
+  shape.lineTo(-hw, -hh + r);
+  shape.quadraticCurveTo(-hw, -hh, -hw + r, -hh);
+  return shape;
 }
 
 export function distanceToLineSegment(

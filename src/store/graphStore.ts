@@ -1,20 +1,49 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { GraphNode, Relationship, DragState, NodeDragState, ThemeColors, GridSettings, NodeSettings, MetadataEntry } from '@/types';
+import { GraphNode, Relationship, DragState, NodeDragState, ThemeColors, GridSettings, NodeSettings, MetadataEntry, Cardinality, RelationshipKind } from '@/types';
 import { snapToGrid } from '@/utils/geometry';
 import { forceDirectedLayout } from '@/utils/forceLayout';
 
 function migrateMetadata(raw: unknown): MetadataEntry[] {
   if (!Array.isArray(raw)) return [];
   return raw.map((m: unknown): MetadataEntry => {
-    if (typeof m === 'string') return { name: m, dataType: 'string' };
+    if (typeof m === 'string') return { name: m, dataType: 'string', required: false };
     if (m && typeof m === 'object') {
       const obj = m as Record<string, unknown>;
-      if ('name' in obj && 'dataType' in obj) return obj as unknown as MetadataEntry;
-      if ('key' in obj) return { name: String(obj.key ?? ''), dataType: 'string' };
+      const required = typeof obj.required === 'boolean' ? obj.required : false;
+      if ('name' in obj && 'dataType' in obj) return { ...obj as unknown as MetadataEntry, required };
+      if ('key' in obj) return { name: String(obj.key ?? ''), dataType: 'string', required };
     }
-    return { name: '', dataType: 'string' };
+    return { name: '', dataType: 'string', required: false };
   });
+}
+
+function migrateNode(raw: Record<string, unknown>): GraphNode {
+  return {
+    id: String(raw.id ?? ''),
+    name: String(raw.name ?? ''),
+    type: String(raw.type ?? 'default'),
+    description: String(raw.description ?? ''),
+    color: String(raw.color ?? '#4f46e5'),
+    position: (raw.position as { x: number; y: number }) ?? { x: 0, y: 0 },
+    metadata: migrateMetadata(raw.metadata),
+    abstract: typeof raw.abstract === 'boolean' ? raw.abstract : false,
+  };
+}
+
+function migrateRelationship(raw: Record<string, unknown>): Relationship {
+  return {
+    id: String(raw.id ?? ''),
+    sourceId: String(raw.sourceId ?? ''),
+    targetId: String(raw.targetId ?? ''),
+    name: String(raw.name ?? ''),
+    type: String(raw.type ?? 'default'),
+    weight: typeof raw.weight === 'number' ? raw.weight : 1,
+    metadata: migrateMetadata(raw.metadata),
+    sourceCardinality: (raw.sourceCardinality as Cardinality) ?? '1',
+    targetCardinality: (raw.targetCardinality as Cardinality) ?? '0..*',
+    kind: (raw.kind as RelationshipKind) ?? 'regular',
+  };
 }
 
 export const DEFAULT_THEME: ThemeColors = {
@@ -27,6 +56,7 @@ export const DEFAULT_THEME: ThemeColors = {
   selectionHighlight: '#3b82f6',
   relationshipLine: '#94a3b8',
   relationshipText: '#9ca3af',
+  abstractColor: '#a78bfa',
 };
 
 export const DEFAULT_GRID: GridSettings = {
@@ -59,12 +89,16 @@ interface GraphState {
   selectedRelationshipIds: string[];
   dragState: DragState | null;
   nodeDragState: NodeDragState | null;
+  instanceDragState: { sourceInstanceId: string; sourcePosition: { x: number; y: number }; currentPoint: { x: number; y: number } } | null;
   marqueeState: MarqueeState | null;
-  contextMenu: { worldX: number; worldY: number; screenX: number; screenY: number } | null;
+  contextMenu: { worldX: number; worldY: number; screenX: number; screenY: number; target?: { kind: 'node'; id: string } | { kind: 'relationship'; id: string } } | null;
   cameraState: { x: number; y: number; zoom: number } | null;
   theme: ThemeColors;
+  defaultTheme: ThemeColors;
   grid: GridSettings;
+  defaultGrid: GridSettings;
   nodeSettings: NodeSettings;
+  defaultNodeSettings: NodeSettings;
   isDirty: boolean;
   nextNodeNumber: number;
 
@@ -82,10 +116,12 @@ interface GraphState {
   deleteSelected: () => void;
   setDragState: (state: DragState | null) => void;
   setNodeDragState: (state: NodeDragState | null) => void;
+  setInstanceDragState: (state: { sourceInstanceId: string; sourcePosition: { x: number; y: number }; currentPoint: { x: number; y: number } } | null) => void;
   setMarqueeState: (state: MarqueeState | null) => void;
-  setContextMenu: (menu: { worldX: number; worldY: number; screenX: number; screenY: number } | null) => void;
+  setContextMenu: (menu: { worldX: number; worldY: number; screenX: number; screenY: number; target?: { kind: 'node'; id: string } | { kind: 'relationship'; id: string } } | null) => void;
   setCameraState: (state: { x: number; y: number; zoom: number }) => void;
   updateTheme: (updates: Partial<ThemeColors>) => void;
+  setDefaultTheme: () => void;
   updateGrid: (updates: Partial<GridSettings>) => void;
   updateNodeSettings: (updates: Partial<NodeSettings>) => void;
   applyThemeToAll: () => void;
@@ -149,12 +185,16 @@ export const useGraphStore = create<GraphState>()(
       selectedRelationshipIds: [],
       dragState: null,
       nodeDragState: null,
+      instanceDragState: null,
       marqueeState: null,
       contextMenu: null,
       cameraState: null,
       theme: { ...DEFAULT_THEME },
+      defaultTheme: { ...DEFAULT_THEME },
       grid: { ...DEFAULT_GRID },
+      defaultGrid: { ...DEFAULT_GRID },
       nodeSettings: { ...DEFAULT_NODE_SETTINGS },
+      defaultNodeSettings: { ...DEFAULT_NODE_SETTINGS },
       isDirty: false,
       nextNodeNumber: 1,
 
@@ -171,6 +211,7 @@ export const useGraphStore = create<GraphState>()(
           color: get().theme.nodeBackground,
           position: grid.snapEnabled ? snapToGrid(rawPos, grid.minorGridPx) : rawPos,
           metadata: [],
+          abstract: false,
         };
         set((s) => ({
           nodes: [...s.nodes, node],
@@ -183,6 +224,8 @@ export const useGraphStore = create<GraphState>()(
 
       addNodeWithRelationship: (sourceId, position) => {
         pushUndo(get());
+        const sourceNode = get().nodes.find((n) => n.id === sourceId);
+        const fromAbstract = sourceNode?.abstract ?? false;
         const num = get().nextNodeNumber;
         const node: GraphNode = {
           id: generateId(),
@@ -192,16 +235,35 @@ export const useGraphStore = create<GraphState>()(
           color: get().theme.nodeBackground,
           position,
           metadata: [],
+          abstract: false,
         };
-        const rel: Relationship = {
-          id: generateId(),
-          sourceId,
-          targetId: node.id,
-          name: 'relates to',
-          type: 'default',
-          weight: 1,
-          metadata: [],
-        };
+        // Dragging from an abstract node → the new node is a concrete subtype.
+        // Direction: new node (child) --inherits-from--> abstract node (parent).
+        const rel: Relationship = fromAbstract
+          ? {
+              id: generateId(),
+              sourceId: node.id,
+              targetId: sourceId,
+              name: 'is',
+              type: 'default',
+              weight: 1,
+              metadata: [],
+              sourceCardinality: '0..*',
+              targetCardinality: '1',
+              kind: 'inherits-from',
+            }
+          : {
+              id: generateId(),
+              sourceId,
+              targetId: node.id,
+              name: 'relates to',
+              type: 'default',
+              weight: 1,
+              metadata: [],
+              sourceCardinality: '1',
+              targetCardinality: '0..*',
+              kind: 'regular',
+            };
         set((s) => ({
           nodes: [...s.nodes, node],
           relationships: [...s.relationships, rel],
@@ -235,20 +297,42 @@ export const useGraphStore = create<GraphState>()(
       addRelationship: (sourceId, targetId) => {
         if (sourceId === targetId) return;
         pushUndo(get());
+        const sourceNode = get().nodes.find((n) => n.id === sourceId);
+        const fromAbstract = sourceNode?.abstract ?? false;
+        // When dragging from an abstract node, reverse direction so the dropped-on
+        // node becomes the child and the abstract node becomes the parent.
+        const relSourceId = fromAbstract ? targetId : sourceId;
+        const relTargetId = fromAbstract ? sourceId : targetId;
         const existing = get().relationships.find(
-          (r) => r.sourceId === sourceId && r.targetId === targetId
+          (r) => r.sourceId === relSourceId && r.targetId === relTargetId
         );
         if (existing) return;
 
-        const rel: Relationship = {
-          id: generateId(),
-          sourceId,
-          targetId,
-          name: 'relates to',
-          type: 'default',
-          weight: 1,
-          metadata: [],
-        };
+        const rel: Relationship = fromAbstract
+          ? {
+              id: generateId(),
+              sourceId: relSourceId,
+              targetId: relTargetId,
+              name: 'is',
+              type: 'default',
+              weight: 1,
+              metadata: [],
+              sourceCardinality: '0..*',
+              targetCardinality: '1',
+              kind: 'inherits-from',
+            }
+          : {
+              id: generateId(),
+              sourceId,
+              targetId,
+              name: 'relates to',
+              type: 'default',
+              weight: 1,
+              metadata: [],
+              sourceCardinality: '1',
+              targetCardinality: '0..*',
+              kind: 'regular',
+            };
         set((s) => ({
           relationships: [...s.relationships, rel],
           selectedRelationshipIds: [rel.id],
@@ -325,6 +409,8 @@ export const useGraphStore = create<GraphState>()(
 
       setNodeDragState: (nodeDragState) => set({ nodeDragState }),
 
+      setInstanceDragState: (instanceDragState) => set({ instanceDragState }),
+
       setMarqueeState: (marqueeState) => set({ marqueeState }),
 
       setContextMenu: (contextMenu) => set({ contextMenu }),
@@ -345,6 +431,13 @@ export const useGraphStore = create<GraphState>()(
           return newState;
         }),
 
+      setDefaultTheme: () =>
+        set((s) => ({
+          defaultTheme: { ...s.theme },
+          defaultGrid: { ...s.grid },
+          defaultNodeSettings: { ...s.nodeSettings },
+        })),
+
       applyThemeToAll: () =>
         set((s) => ({
           nodes: s.nodes.map((n) => ({ ...n, color: s.theme.nodeBackground })),
@@ -357,7 +450,10 @@ export const useGraphStore = create<GraphState>()(
       updateNodeSettings: (updates) =>
         set((s) => ({ nodeSettings: { ...s.nodeSettings, ...updates }, isDirty: true })),
 
-      resetTheme: () => set({ theme: { ...DEFAULT_THEME }, grid: { ...DEFAULT_GRID }, nodeSettings: { ...DEFAULT_NODE_SETTINGS }, isDirty: true }),
+      resetTheme: () => {
+        const { defaultTheme, defaultGrid, defaultNodeSettings } = get();
+        set({ theme: { ...defaultTheme }, grid: { ...defaultGrid }, nodeSettings: { ...defaultNodeSettings }, isDirty: true });
+      },
 
       clearSelection: () =>
         set({ selectedNodeIds: [], selectedRelationshipIds: [] }),
@@ -374,6 +470,9 @@ export const useGraphStore = create<GraphState>()(
           selectedNodeIds: [],
           selectedRelationshipIds: [],
           cameraState: null,
+          theme: { ...get().defaultTheme },
+          grid: { ...get().defaultGrid },
+          nodeSettings: { ...get().defaultNodeSettings },
           isDirty: false,
         });
       },
@@ -442,8 +541,8 @@ export const useGraphStore = create<GraphState>()(
         undoStack.length = 0;
         redoStack.length = 0;
         set({
-          nodes: (data.nodes ?? []).map((n: Record<string, unknown>) => ({ ...n, metadata: migrateMetadata(n.metadata) })),
-          relationships: (data.relationships ?? []).map((r: Record<string, unknown>) => ({ ...r, metadata: migrateMetadata(r.metadata) })),
+          nodes: (data.nodes ?? []).map((n: Record<string, unknown>) => migrateNode(n)),
+          relationships: (data.relationships ?? []).map((r: Record<string, unknown>) => migrateRelationship(r)),
           nextNodeNumber: data.nextNodeNumber ?? 1,
           theme: { ...DEFAULT_THEME, ...(data.theme ?? {}) },
           grid: { ...DEFAULT_GRID, ...(data.grid ?? {}) },
@@ -462,8 +561,11 @@ export const useGraphStore = create<GraphState>()(
         relationships: state.relationships,
         nextNodeNumber: state.nextNodeNumber,
         theme: state.theme,
+        defaultTheme: state.defaultTheme,
         grid: state.grid,
+        defaultGrid: state.defaultGrid,
         nodeSettings: state.nodeSettings,
+        defaultNodeSettings: state.defaultNodeSettings,
         cameraState: state.cameraState,
       }),
       merge: (persisted, current) => {
@@ -471,11 +573,14 @@ export const useGraphStore = create<GraphState>()(
         return {
           ...current,
           ...p,
-          nodes: (p.nodes ?? []).map((n) => ({ ...n, metadata: migrateMetadata(n.metadata) })),
-          relationships: (p.relationships ?? []).map((r) => ({ ...r, metadata: migrateMetadata(r.metadata) })),
+          nodes: (p.nodes ?? []).map((n) => migrateNode(n as unknown as Record<string, unknown>)),
+          relationships: (p.relationships ?? []).map((r) => migrateRelationship(r as unknown as Record<string, unknown>)),
           theme: { ...DEFAULT_THEME, ...(p.theme ?? {}) },
+          defaultTheme: { ...DEFAULT_THEME, ...(p.defaultTheme ?? {}) },
           grid: { ...DEFAULT_GRID, ...(p.grid ?? {}) },
+          defaultGrid: { ...DEFAULT_GRID, ...(p.defaultGrid ?? {}) },
           nodeSettings: { ...DEFAULT_NODE_SETTINGS, ...(p.nodeSettings ?? {}) },
+          defaultNodeSettings: { ...DEFAULT_NODE_SETTINGS, ...(p.defaultNodeSettings ?? {}) },
         };
       },
     }

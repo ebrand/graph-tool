@@ -4,7 +4,7 @@ import { Suspense, useMemo } from 'react';
 import { Line, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGraphStore } from '@/store/graphStore';
-import { getEdgePoints, getArrowHeadPoints, getJiggledLinePoints, pxToWorld } from '@/utils/geometry';
+import { getEdgePoints, getArrowHeadPoints, getInheritanceArrowPoints, getJiggledLinePoints } from '@/utils/geometry';
 
 interface GraphEdgeProps {
   id: string;
@@ -19,10 +19,14 @@ interface GraphEdgeProps {
   isBidirectional: boolean;
   showDoubleArrow: boolean;
   offset: number;
+  kind: 'regular' | 'inherits-from';
   edgeGapPx: number;
   highlightColor: string;
   lineColor: string;
   textColor: string;
+  abstractColor: string;
+  sourceCardinality?: string;
+  targetCardinality?: string;
 }
 
 export default function GraphEdge({
@@ -42,8 +46,12 @@ export default function GraphEdge({
   highlightColor,
   lineColor,
   textColor,
+  abstractColor,
+  sourceCardinality,
+  targetCardinality,
+  kind,
 }: GraphEdgeProps) {
-  const { selectRelationship } = useGraphStore();
+  const { selectRelationship, setContextMenu } = useGraphStore();
   const jiggle = useGraphStore((s) => s.nodeSettings.jiggleEnabled);
   const relTextT = useGraphStore((s) => s.nodeSettings.relTextPosition) / 100;
 
@@ -51,11 +59,13 @@ export default function GraphEdge({
     () => getEdgePoints(sourcePosition, targetPosition, offset, sourceWidth, targetWidth, edgeGapPx),
     [sourcePosition, targetPosition, offset, sourceWidth, targetWidth, edgeGapPx]
   );
+  const isInheritance = kind === 'inherits-from';
+
   const { points: arrowPoints, lineEnd } = useMemo(
-    () => getArrowHeadPoints(end, start),
-    [start, end]
+    () => isInheritance ? getInheritanceArrowPoints(end, start) : getArrowHeadPoints(end, start),
+    [start, end, isInheritance]
   );
-  // Reverse arrowhead at the start (for double-arrow mode)
+  // Reverse arrowhead at the start (for double-arrow mode — not used for inheritance)
   const { points: reverseArrowPoints, lineEnd: reverseLineEnd } = useMemo(
     () => getArrowHeadPoints(start, end),
     [start, end]
@@ -63,16 +73,18 @@ export default function GraphEdge({
 
   // Always show arrow, show name only when source node selected or edge directly selected
   const showName = isSelected || sourceSelected || !isBidirectional;
-  const visibleStart = showDoubleArrow ? reverseLineEnd : start;
+  // Inheritance edges are never rendered as double-arrows
+  const effectiveShowDoubleArrow = showDoubleArrow && !isInheritance;
+  const visibleStart = effectiveShowDoubleArrow ? reverseLineEnd : start;
   const visibleEnd = lineEnd;
 
   // Dim this edge when the other direction in a bidirectional pair is active
   const dimmed = isBidirectional && targetSelected && !sourceSelected && !isSelected;
-  const color = isSelected ? highlightColor : lineColor;
-  const lw = isSelected ? 3 : 1.5;
+  const color = isSelected ? highlightColor : isInheritance ? abstractColor : lineColor;
+  const lw = isSelected ? 3 : isInheritance ? 1.5 : 1.5;
   const opacity = dimmed ? 0.25 : 1;
 
-  const edgeGapWorld = pxToWorld(edgeGapPx);
+  const LABEL_PADDING = 0.05; // fixed small clearance around the label text
 
   const { seg1, seg2 } = useMemo(() => {
     const dx = visibleEnd.x - visibleStart.x;
@@ -85,7 +97,7 @@ export default function GraphEdge({
     const cosA = dist > 0 ? Math.abs(dx) / dist : 1;
     const sinA = dist > 0 ? Math.abs(dy) / dist : 0;
     const projectedHalf = showName && name
-      ? (cosA * textW + sinA * textH) / 2 + edgeGapWorld
+      ? (cosA * textW + sinA * textH) / 2 + LABEL_PADDING
       : 0;
 
     if (projectedHalf <= 0 || dist < projectedHalf * 2 + 0.1) {
@@ -107,7 +119,7 @@ export default function GraphEdge({
       seg1: getJiggledLinePoints(visibleStart, gapStart, `edge-${id}-a`, jiggle),
       seg2: getJiggledLinePoints(gapEnd, visibleEnd, `edge-${id}-b`, jiggle),
     };
-  }, [visibleStart, visibleEnd, showName, name, edgeGapWorld, id, jiggle, relTextT]);
+  }, [visibleStart, visibleEnd, showName, name, id, jiggle, relTextT]);
 
   const angle = useMemo(
     () => Math.atan2(end.y - start.y, end.x - start.x),
@@ -118,6 +130,21 @@ export default function GraphEdge({
     [start, end]
   );
 
+  // Positions for cardinality labels near each end of the line
+  const cardinalityPositions = useMemo(() => {
+    if (length < 0.5) return null;
+    const nx = (end.x - start.x) / length;
+    const ny = (end.y - start.y) / length;
+    // Perpendicular (90° CCW) for consistent above-line placement
+    const px = -ny * 0.15;
+    const py = nx * 0.15;
+    const along = Math.min(0.28, length * 0.25);
+    return {
+      src: { x: start.x + nx * along + px, y: start.y + ny * along + py },
+      tgt: { x: end.x - nx * along + px, y: end.y - ny * along + py },
+    };
+  }, [start, end, length]);
+
   return (
     <group>
       {/* Invisible wide line for click target */}
@@ -127,6 +154,17 @@ export default function GraphEdge({
         onClick={(e) => {
           e.stopPropagation();
           selectRelationship(id);
+        }}
+        onContextMenu={(e) => {
+          e.stopPropagation();
+          e.nativeEvent.preventDefault();
+          setContextMenu({
+            worldX: e.point.x,
+            worldY: e.point.y,
+            screenX: e.nativeEvent.clientX,
+            screenY: e.nativeEvent.clientY,
+            target: { kind: 'relationship', id },
+          });
         }}
         onPointerOver={() => { document.body.style.cursor = 'pointer'; }}
         onPointerOut={() => { document.body.style.cursor = 'default'; }}
@@ -141,8 +179,11 @@ export default function GraphEdge({
         color={color}
         lineWidth={lw}
         position={[0, 0, -0.01]}
-        transparent={dimmed}
+        transparent={dimmed || isInheritance}
         opacity={opacity}
+        dashed={isInheritance}
+        dashSize={isInheritance ? 0.12 : undefined}
+        gapSize={isInheritance ? 0.06 : undefined}
       />
       {seg2 && (
         <Line
@@ -150,16 +191,19 @@ export default function GraphEdge({
           color={color}
           lineWidth={lw}
           position={[0, 0, -0.01]}
-          transparent={dimmed}
+          transparent={dimmed || isInheritance}
           opacity={opacity}
+          dashed={isInheritance}
+          dashSize={isInheritance ? 0.12 : undefined}
+          gapSize={isInheritance ? 0.06 : undefined}
         />
       )}
 
       {/* Arrow head at target end */}
       <ArrowHead points={arrowPoints} color={color} opacity={opacity} />
 
-      {/* Reverse arrow head at source end (double-arrow mode) */}
-      {showDoubleArrow && (
+      {/* Reverse arrow head at source end (double-arrow mode, regular only) */}
+      {effectiveShowDoubleArrow && (
         <ArrowHead points={reverseArrowPoints} color={color} opacity={opacity} />
       )}
 
@@ -175,6 +219,36 @@ export default function GraphEdge({
           >
             {name}
           </Text>
+        </Suspense>
+      )}
+
+      {/* Cardinality labels */}
+      {cardinalityPositions && (sourceCardinality || targetCardinality) && (
+        <Suspense fallback={null}>
+          {sourceCardinality && (
+            <Text
+              position={[cardinalityPositions.src.x, cardinalityPositions.src.y, 0.01]}
+              fontSize={0.085}
+              color={isSelected ? highlightColor : textColor}
+              anchorX="center"
+              anchorY="middle"
+              fillOpacity={0.7}
+            >
+              {sourceCardinality}
+            </Text>
+          )}
+          {targetCardinality && (
+            <Text
+              position={[cardinalityPositions.tgt.x, cardinalityPositions.tgt.y, 0.01]}
+              fontSize={0.085}
+              color={isSelected ? highlightColor : textColor}
+              anchorX="center"
+              anchorY="middle"
+              fillOpacity={0.7}
+            >
+              {targetCardinality}
+            </Text>
+          )}
         </Suspense>
       )}
     </group>
