@@ -555,7 +555,7 @@ export const useGraphStore = create<GraphState>()(
       },
     }),
     {
-      name: 'graph-creator-storage',
+      name: 'graph-tool-storage',
       partialize: (state) => ({
         nodes: state.nodes,
         relationships: state.relationships,

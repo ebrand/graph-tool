@@ -6,10 +6,10 @@ import { useDataStore } from '@/store/dataStore';
 
 // ── Storage keys ──────────────────────────────────────────────────────────────
 
-const SCHEMA_SAVES_KEY = 'graph-creator-saves';
-const SCHEMA_LAST_KEY  = 'graph-creator-last-save';
-const DATA_SAVES_KEY   = 'graph-creator-data-saves';
-const DATA_LAST_KEY    = 'graph-creator-data-last-save';
+const SCHEMA_SAVES_KEY = 'graph-tool-saves';
+const SCHEMA_LAST_KEY  = 'graph-tool-last-save';
+const DATA_SAVES_KEY   = 'graph-tool-data-saves';
+const DATA_LAST_KEY    = 'graph-tool-data-last-save';
 
 interface SaveEntry {
   name: string;

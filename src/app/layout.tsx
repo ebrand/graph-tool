@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Graph Creator",
-  description: "Interactive graph creation tool",
+  title: "Graph Tool",
+  description: "Interactive graph modeling tool",
 };
 
 export default function RootLayout({

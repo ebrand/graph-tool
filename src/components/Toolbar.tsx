@@ -45,7 +45,7 @@ export default function Toolbar() {
 
   return (
     <div className="relative flex items-center gap-2 px-4 py-2 bg-gray-900 border-b border-gray-700">
-      <h1 className="text-sm font-semibold text-gray-200 mr-2">Graph Creator</h1>
+      <h1 className="text-sm font-semibold text-gray-200 mr-2">Graph Tool</h1>
       <span
         className={`w-3 h-3 rounded-full mr-2 ${isDirty ? 'bg-amber-400' : 'bg-green-500'}`}
         title={isDirty ? 'Unsaved changes' : 'Saved'}
